@@ -1,6 +1,6 @@
 import { MapContainer, TileLayer, useMapEvents, CircleMarker, Polyline } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 type MapClickHandlerProps = {
   onMapClick: (latlng: [number, number]) => void
@@ -29,6 +29,26 @@ function MapView() {
       setSelectingStart(true)
     }
   }
+  const [routePoints, setRoutePoints] = useState<[number, number][]>([])
+  const generateRoute = async () => {
+    if (startPoint && endPoint) {
+      setRoutePoints([])
+      const response = await fetch('http://127.0.0.1:8000/route', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ start: startPoint, end: endPoint })
+      });
+      const result = await response.json();
+      setRoutePoints(result.route);
+    }
+  }
+  useEffect(() => {
+    if (startPoint && endPoint) {
+      generateRoute();
+    }}, [startPoint, endPoint]);
+
   return <MapContainer
     center={[38,-74]}
     zoom={5}
@@ -45,8 +65,8 @@ function MapView() {
   
   {endPoint && <CircleMarker center={endPoint} radius={5} pathOptions={{ color: 'blue' }} />}
 
-  {startPoint && endPoint && (
-  <Polyline positions={[startPoint, endPoint]} />
+  {routePoints.length > 0 && (
+  <Polyline positions={routePoints} />
 )}
 </MapContainer>
 

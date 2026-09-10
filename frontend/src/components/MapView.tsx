@@ -16,9 +16,14 @@ function MapClickHandler({onMapClick}: MapClickHandlerProps) {
   return null
 }
 
-function MapView() {
-  const [ startPoint, setStartPoint] = useState<[number, number] | null>(null)
-  const [endPoint, setEndPoint] = useState<[number, number] | null>(null)
+type MapViewProps = {
+  startPoint: [number, number] | null
+  endPoint: [number, number] | null
+  setStartPoint: (point: [number, number] | null) => void
+  setEndPoint: (point: [number, number] | null) => void
+}
+
+function MapView({ startPoint, endPoint, setStartPoint, setEndPoint }: MapViewProps) {
   const [selectingStart, setSelectingStart] = useState(true)
   const handleMapClick = (latlng: [number, number]) => {
     if (selectingStart) {

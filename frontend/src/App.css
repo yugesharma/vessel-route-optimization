@@ -7,3 +7,58 @@
   width: 100%;
 }
 
+.app-layout {
+  display: flex;
+  height: 100vh;
+}
+
+.sidebar {
+  width: 300px;
+  flex-shrink: 0;
+  padding: 20px;
+  box-sizing: border-box;
+  font-size: 14px;
+}
+.transparent-bg {
+  background-color: rgba(255, 255, 255, 0.3); 
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  margin-bottom: 6px;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+.form-group input[type="range"] {
+  padding: 5;
+  width: 100%;
+}
+
+.slider-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+}
+
+.weight-value {
+  border: 1px solid #ccc;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.range-labels {
+  display: flex;
+  justify-content: space-between;
+}

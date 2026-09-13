@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from utils import getWaveData
+from RouteCalculation import calculateRoute
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -14,14 +15,18 @@ app.add_middleware(
 )
 
 class RouteRequest(BaseModel):
-    start: tuple[float, float]
-    end: tuple[float, float]
+    startPoint: tuple[float, float]
+    endPoint: tuple[float, float]
 
 @app.post("/route")
 async def calculate_route(request: RouteRequest):
     # Here we would implement the logic to calculate the optimal route based on the start and ending points 
     # for now, return a placeholder response
-    return {"route": [request.start, request.end], "message": "Route calculation not implemented yet"}
+    startPoint = (request.startPoint[1], request.startPoint[0])
+    endPoint = (request.endPoint[1], request.endPoint[0])
+    route = calculateRoute(startPoint, endPoint)
+    return {"route": route.baseRoute, "message": "Route calculation not implemented yet"}
+
 @app.get("/")
 async def root():
     getWaveData()

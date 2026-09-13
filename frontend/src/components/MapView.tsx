@@ -1,6 +1,6 @@
 import { MapContainer, TileLayer, useMapEvents, CircleMarker, Polyline } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 
 type MapClickHandlerProps = {
   onMapClick: (latlng: [number, number]) => void
@@ -21,9 +21,11 @@ type MapViewProps = {
   endPoint: [number, number] | null
   setStartPoint: (point: [number, number] | null) => void
   setEndPoint: (point: [number, number] | null) => void
+  routePoints: [number, number][]
+  setRoutePoints: (points: [number, number][]) => void
 }
 
-function MapView({ startPoint, endPoint, setStartPoint, setEndPoint }: MapViewProps) {
+function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, routePoints }: MapViewProps) {
   const [selectingStart, setSelectingStart] = useState(true)
   const handleMapClick = (latlng: [number, number]) => {
     if (selectingStart) {
@@ -34,25 +36,6 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint }: MapViewPr
       setSelectingStart(true)
     }
   }
-  const [routePoints, setRoutePoints] = useState<[number, number][]>([])
-  const generateRoute = async () => {
-    if (startPoint && endPoint) {
-      setRoutePoints([])
-      const response = await fetch('http://127.0.0.1:8000/route', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ start: startPoint, end: endPoint })
-      });
-      const result = await response.json();
-      setRoutePoints(result.route);
-    }
-  }
-  useEffect(() => {
-    if (startPoint && endPoint) {
-      generateRoute();
-    }}, [startPoint, endPoint]);
 
   return <MapContainer
     center={[38,-74]}
@@ -70,7 +53,7 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint }: MapViewPr
   
   {endPoint && <CircleMarker center={endPoint} radius={5} pathOptions={{ color: 'blue' }} />}
 
-  {routePoints.length > 0 && (
+  {routePoints && routePoints.length > 0 && (
   <Polyline positions={routePoints} />
 )}
 </MapContainer>

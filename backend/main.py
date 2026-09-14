@@ -3,8 +3,15 @@ from utils import getWaveData
 from RouteCalculation import calculateRoute
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from dotenv import load_dotenv
+import os
+import requests
 
 app = FastAPI()
+
+load_dotenv()
+geoapify_api_key = os.getenv("GEOAPIFY_API_KEY")
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -13,6 +20,27 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def geocode_location(location: str):
+    url = "https://api.geoapify.com/v1/geocode/search"
+    params = {
+        "text": location,
+        "apiKey": geoapify_api_key
+    }
+    response = requests.get(url, params=params)
+    data = response.json()
+
+    lat = data['features'][0]['properties']['lat']
+    lon = data['features'][0]['properties']['lon']
+
+    return (lat, lon)
+
+@app.get("/geocode")
+async def geocode(location: str):
+    coordinates = geocode_location(location)
+    return {"coordinates": coordinates}
+
+    
 
 class RouteRequest(BaseModel):
     startPoint: tuple[float, float]

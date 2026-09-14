@@ -1,6 +1,6 @@
-import { MapContainer, TileLayer, useMapEvents, CircleMarker, Polyline } from 'react-leaflet'
+import { MapContainer, TileLayer, useMapEvents, CircleMarker, Polyline, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 type MapClickHandlerProps = {
   onMapClick: (latlng: [number, number]) => void
@@ -21,22 +21,45 @@ type MapViewProps = {
   endPoint: [number, number] | null
   setStartPoint: (point: [number, number] | null) => void
   setEndPoint: (point: [number, number] | null) => void
+  setStartLocation: (value: string) => void
+  setEndLocation: (value: string) => void
   routePoints: [number, number][]
-  setRoutePoints: (points: [number, number][]) => void
 }
 
-function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, routePoints }: MapViewProps) {
+function MapUpdater({
+  startPoint,
+  endPoint,
+}: {
+  startPoint: [number, number] | null
+  endPoint: [number, number] | null
+}) {
+  const map = useMap()
+
+  useEffect(() => {
+    if (startPoint && endPoint) {
+      map.fitBounds([startPoint, endPoint])
+    } else if (startPoint) {
+      map.setView(startPoint, 7)
+    }
+  }, [startPoint, endPoint, map])
+
+  return null
+}
+
+function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, setStartLocation, setEndLocation, routePoints }: MapViewProps) {
   const [selectingStart, setSelectingStart] = useState(true)
   const handleMapClick = (latlng: [number, number]) => {
     if (selectingStart) {
       setStartPoint(latlng)
       setSelectingStart(false)
+      setStartLocation(`${latlng[0].toFixed(4)}, ${latlng[1].toFixed(4)}`)
     } else {
       setEndPoint(latlng)
       setSelectingStart(true)
+      setEndLocation(`${latlng[0].toFixed(4)}, ${latlng[1].toFixed(4)}`)
     }
   }
-
+  
   return <MapContainer
     center={[38,-74]}
     zoom={5}
@@ -47,6 +70,9 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, routePoints
     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     noWrap={true}  
   />
+
+  <MapUpdater startPoint={startPoint} endPoint={endPoint} />
+  
   <MapClickHandler onMapClick={handleMapClick} />
   
   {startPoint && <CircleMarker center={startPoint} radius={5} pathOptions={{ color: 'red' }} />}

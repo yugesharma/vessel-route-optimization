@@ -11,3 +11,6 @@ wheels/
 
 data/
 PROJECT.md
+
+# Environment variables
+.env

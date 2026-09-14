@@ -70,12 +70,18 @@ def convertGribToPng(gribFile):
 
 
 def getWaveData():
-    if not os.path.exists(os.path.join(os.path.dirname(__file__), "data")):
-        os.makedirs(os.path.join(os.path.dirname(__file__), "data"), exist_ok=True)
-    if not os.path.exists(os.path.join(os.path.dirname(__file__), "wavepngs")):
-        os.makedirs(os.path.join(os.path.dirname(__file__), "wavepngs"), exist_ok=True)
-    gribFile = os.path.join(os.path.join(os.path.dirname(__file__), "data"), f"wave_{DATE_STRING}.grib2")
-    if not os.path.exists(gribFile) or not os.path.exists(os.path.join(os.path.dirname(__file__), "wavepngs", f"wave_{DATE_STRING}.png")):
+    data_dir = os.path.join(os.path.dirname(__file__), "data")
+    wavepngs_dir = os.path.join(data_dir, "wavepngs")
+
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir, exist_ok=True)
+    if not os.path.exists(wavepngs_dir):
+        os.makedirs(wavepngs_dir, exist_ok=True)
+
+    gribFile = os.path.join(data_dir, f"wave_{DATE_STRING}.grib2")
+    pngFile = os.path.join(wavepngs_dir, f"wave_{DATE_STRING}.png")
+
+    if not os.path.exists(gribFile) or not os.path.exists(pngFile):
         response = downloadWaveData()
         gribFile = saveWaveData(response)
         convertGribToPng(gribFile)

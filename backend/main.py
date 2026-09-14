@@ -35,16 +35,16 @@ def geocode_location(location: str):
 
     return (lat, lon)
 
-@app.get("/geocode")
-async def geocode(location: str):
-    coordinates = geocode_location(location)
-    return {"coordinates": coordinates}
-
-    
 
 class RouteRequest(BaseModel):
     startPoint: tuple[float, float]
     endPoint: tuple[float, float]
+
+    
+@app.get("/geocode")
+async def geocode(location: str):
+    coordinates = geocode_location(location)
+    return {"coordinates": coordinates}
 
 @app.post("/route")
 async def calculate_route(request: RouteRequest):

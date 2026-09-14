@@ -14,6 +14,9 @@ function App() {
   const [startLocation, setStartLocation] = useState('')
   const [endLocation, setEndLocation] = useState('')
   const [routePoints, setRoutePoints] = useState<[number, number][]>([])
+  const [dateTime, setDateTime] = useState('')
+  const [routeDistance, setRouteDistance] = useState<number | null>(null)
+  const [duration, setDuration] = useState<number | null>(null)
 
   const handleStartLocationChange = async () => {
     const response = await fetch(
@@ -36,16 +39,24 @@ function App() {
       
       setRoutePoints([])
 
-        const response = await calculateRoute(startPoint, endPoint)
+        const response = await calculateRoute(startPoint, endPoint, dateTime, distanceWeight, windWeight, waveWeight)
+
+        
+        console.log(response.data)
+        
         const points = response.data.route.geometry.coordinates.map(
           (point: [number, number]) => [point[1], point[0]] as [number, number])
         
         setRoutePoints(points)
-      }
+
+        setRouteDistance(response.data.route.properties.length)
+
+        setDuration(response.data.route.properties.duration_hours)
+        }
 
   return (
     <div className="app-layout">
-      <Sidebar startPoint={startPoint} startLocation={startLocation} setStartLocation={setStartLocation} endPoint={endPoint} endLocation={endLocation} setEndLocation={setEndLocation} distanceWeight={distanceWeight} setDistanceWeight={setDistanceWeight} windWeight={windWeight} setWindWeight={setWindWeight} waveWeight={waveWeight} setWaveWeight={setWaveWeight} handleStartLocationSearch={handleStartLocationChange} handleEndLocationSearch={handleEndLocationChange} generateRoute={generateRoute}/>
+      <Sidebar startPoint={startPoint} startLocation={startLocation} setStartLocation={setStartLocation} endPoint={endPoint} endLocation={endLocation} setEndLocation={setEndLocation} setDateTime={setDateTime} dateTime={dateTime} distanceWeight={distanceWeight} setDistanceWeight={setDistanceWeight} windWeight={windWeight} setWindWeight={setWindWeight} waveWeight={waveWeight} setWaveWeight={setWaveWeight} handleStartLocationSearch={handleStartLocationChange} handleEndLocationSearch={handleEndLocationChange} generateRoute={generateRoute} routeDistance={routeDistance} duration={duration} />
       <MapView startPoint={startPoint} setStartPoint={setStartPoint} endPoint={endPoint} setEndPoint={setEndPoint} setStartLocation={setStartLocation} setEndLocation={setEndLocation} routePoints={routePoints} />
     </div>
   )

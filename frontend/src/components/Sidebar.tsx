@@ -14,11 +14,17 @@ type SidebarProps = {
   handleStartLocationSearch: () => void
   handleEndLocationSearch: () => void
   generateRoute: () => void
+  dateTime: string
+  setDateTime: (value: string) => void
+  routeDistance: number | null
+  duration: number | null
 }
 
 
 
-function Sidebar({distanceWeight, setDistanceWeight, windWeight, setWindWeight, waveWeight, setWaveWeight, startLocation, endLocation, setStartLocation, setEndLocation, handleStartLocationSearch, handleEndLocationSearch, generateRoute}: SidebarProps) {
+function Sidebar({distanceWeight, setDistanceWeight, windWeight, setWindWeight, waveWeight, setWaveWeight, startLocation, endLocation, setStartLocation, setEndLocation, handleStartLocationSearch, handleEndLocationSearch, generateRoute, dateTime, setDateTime, routeDistance, duration}: SidebarProps) {
+  const durationDays = duration !== null ? Math.floor(duration / 24) : 0
+  const durationHours = duration !== null ? duration % 24 : 0
   return (
     <div className="sidebar">
       <h2>Route Planner</h2>
@@ -32,8 +38,9 @@ function Sidebar({distanceWeight, setDistanceWeight, windWeight, setWindWeight, 
       </div>
       <div className="form-group">
         <label htmlFor="dateTime">Date/Time:</label>
-        <input type="datetime-local" id="dateTime" name="dateTime" />
+        <input type="datetime-local" id="dateTime" name="dateTime" value={dateTime} onChange={(e) => setDateTime(e.target.value)} />
       </div>
+
       <h3>Route Preferences</h3>
 
     <div className="form-group">
@@ -62,6 +69,14 @@ function Sidebar({distanceWeight, setDistanceWeight, windWeight, setWindWeight, 
       </div>
       
       <button onClick={generateRoute}>Calculate Route</button>
+      {routeDistance !== null && (
+        <div className="route-info">
+          <h3>Route Information</h3>
+          <p>Distance: {routeDistance.toFixed(2)} nautical miles</p>
+          <p>Estimated Duration: {duration !== null ? `${durationDays} days, ${durationHours.toFixed(1)} hours`: 'N/A'}</p>
+        </div>
+  
+      )}
     </div>
   )
 }

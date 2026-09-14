@@ -39,8 +39,12 @@ def geocode_location(location: str):
 class RouteRequest(BaseModel):
     startPoint: tuple[float, float]
     endPoint: tuple[float, float]
+    dateTime: str
+    distanceWeight: float
+    windWeight: float
+    waveWeight: float 
 
-    
+
 @app.get("/geocode")
 async def geocode(location: str):
     coordinates = geocode_location(location)

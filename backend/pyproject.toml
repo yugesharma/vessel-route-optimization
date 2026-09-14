@@ -7,8 +7,10 @@ requires-python = ">=3.14"
 dependencies = [
     "cfgrib>=0.9.15.1",
     "fastapi[standard]>=0.141.1",
+    "geopandas>=1.1.4",
     "matplotlib>=3.11.1",
     "requests>=2.34.2",
     "searoute>=1.6.0",
+    "shapely>=2.1.2",
     "xarray>=2026.7.0",
 ]

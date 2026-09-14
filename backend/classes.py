@@ -1,5 +1,8 @@
 from enum import IntEnum
+
+import geopandas as gpd
 import searoute as sr
+from shapely.geometry import Point, shape
 
 
 class SternShape(IntEnum):
@@ -50,6 +53,8 @@ class Route:
         self.startPoint = startPoint
         self.endPoint = endPoint
         self.baseRoute = []
+        self.corridorPolygon = None
+        self.corridorBoundingBox = {}
         self.optimizedRute = []
         self.distance = 0
         self.averageSpeed = 0
@@ -68,6 +73,38 @@ class Route:
         route = sr.searoute(self.startPoint, self.endPoint, speed_knot=12.5, units="naut")
         self.baseRoute = route
         return self.baseRoute
+
+    def getCorridorPolygon(self, bufferNm=300):
+        if not self.baseRoute:
+            self.getBaseRoute()
+
+        routeGeometry = shape(self.baseRoute["geometry"])
+        gdf = gpd.GeoDataFrame(geometry=[routeGeometry], crs="EPSG:4326")
+        gdfMerc = gdf.to_crs("EPSG:3857")
+
+        bufferM = bufferNm * 1852
+        corridorMerc = gdfMerc.buffer(bufferM)
+
+        self.corridorPolygon = corridorMerc.to_crs("EPSG:4326").iloc[0]
+        return self.corridorPolygon
+
+    def getCorridorBoundingBox(self):
+        if self.corridorPolygon is None:
+            self.getCorridorPolygon()
+
+        minlon, minlat, maxlon, maxlat = self.corridorPolygon.bounds
+        self.corridorBoundingBox = {
+            "leftlon": minlon % 360,
+            "rightlon": maxlon % 360,
+            "toplat": maxlat,
+            "bottomlat": minlat,
+        }
+        return self.corridorBoundingBox
+
+    def isInsideCorridor(self, lon, lat):
+        if self.corridorPolygon is None:
+            self.getCorridorPolygon()
+        return self.corridorPolygon.contains(Point(lon, lat))
 
 
     

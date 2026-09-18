@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from utils import getWaveData
+from environmentDataService import getWeatherData
 from RouteCalculation import calculateRoute
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
@@ -61,5 +61,5 @@ async def calculate_route(request: RouteRequest):
 
 @app.get("/")
 async def root():
-    getWaveData()
-    return {"message": "Wave data downloaded successfully"}
+    getWeatherData()
+    return {"message": "Weather data downloaded successfully"}

@@ -9,6 +9,7 @@ dependencies = [
     "fastapi[standard]>=0.141.1",
     "geopandas>=1.1.4",
     "matplotlib>=3.11.1",
+    "netcdf4>=1.7.4",
     "requests>=2.34.2",
     "searoute>=1.6.0",
     "shapely>=2.1.2",

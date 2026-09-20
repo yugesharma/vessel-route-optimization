@@ -1,0 +1,1 @@
+#STAWAVE2 for -45 to 45 degrees. Kwon method for other angles.

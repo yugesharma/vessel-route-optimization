@@ -12,6 +12,34 @@ import matplotlib.pyplot as plt
 DATE_STRING = date.today().strftime("%Y%m%d")
 FORECAST_HOURS = list(range(0, 7 * 24 + 1, 3))  
 
+class EnvironmentDataService:
+    def __init__(self):
+        self.weatherField = None
+        self.validHours = None
+
+    def getWeatherData(self, bbox):
+        data_dir = os.path.join(os.path.dirname(__file__), "data")
+        weather_dir = os.path.join(data_dir, "weatherData")
+
+        os.makedirs(weather_dir, exist_ok=True)
+
+        weather_file = getWeatherForecast(weather_dir)
+        globalWeather = xr.open_dataset(weather_file)
+
+        self.cropWeather(globalWeather, bbox)
+
+    def cropWeather(self, globalWeather, bbox):
+        croppedWeather = globalWeather.sel(
+            latitude=slice(bbox["toplat"], bbox["bottomlat"]),
+            longitude=slice(bbox["leftlon"], bbox["rightlon"])
+            )
+
+        self.weatherField = croppedWeather
+        self.validHours = croppedWeather.valid_time.values
+        return self.weatherField, self.validHours
+
+    
+
 
 def downloadWaveData():
     url = (
@@ -81,6 +109,11 @@ def combineWeatherForecast(step_files: list[str], weather_dir: str) -> str:
         datasets.append(ds)
 
     combined = xr.concat(datasets, dim="step").sortby("step")
+    new_lon = ((combined.longitude + 180) % 360) - 180
+    combined = combined.assign_coords(longitude=new_lon)
+    combined = combined.sortby("longitude")
+    
+    
     if "surface" in combined.coords:
         combined = combined.drop_vars("surface")
 
@@ -147,6 +180,15 @@ def getWeatherData():
         print(f"Wave data already exists for {DATE_STRING}")
 
     getWeatherForecast(weather_dir)
+
+def cropWeather (globalWeather,bbox):
+    croppedWeather = globalWeather.sel(
+    latitude=slice(bbox["toplat"], bbox["bottomlat"]),
+    longitude=slice(bbox["leftlon"], bbox["rightlon"])
+)
+    return croppedWeather
+
+
 
 
 if __name__ == "__main__":

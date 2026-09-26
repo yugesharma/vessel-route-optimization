@@ -94,8 +94,8 @@ class Route:
 
         minlon, minlat, maxlon, maxlat = self.corridorPolygon.bounds
         self.corridorBoundingBox = {
-            "leftlon": minlon % 360,
-            "rightlon": maxlon % 360,
+            "leftlon": minlon,
+            "rightlon": maxlon,
             "toplat": maxlat,
             "bottomlat": minlat,
         }

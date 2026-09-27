@@ -74,7 +74,7 @@ fuelKg  = P_B * sfoc * timeH / 1000
 ```
 
 - **R_calm**: Holtrop-Mennen, `totalResistance(...)` in `CalmWaterResistance.py`, driven by a `Vessel`.
-- **R_wave**: STAWAVE-2 (ISO 15016). Inputs: significant wave height, wave period, relative wave heading (`waveDir − heading`), ship dimensions, speed. Always ≥ 0. Equation taken from the standard.
+- **R_wave**: SNNM (ITTC 7.5-04-01-01.1 Rev 08 2024, App. G.3), all headings. Inputs: significant wave height, wave period, relative wave heading (`waveDir − heading`), ship dimensions incl. waterline entrance/run lengths `LE`/`LR` (estimated from Holtrop if unknown), speed. May be slightly negative in stern-quarter/following seas. Equation taken from the standard.
 - **R_wind**: `0.5 * rho_air * C_D * A_front * V_app² * cos(theta_app)`. Apparent wind = true wind vector − ship velocity vector; `theta_app` is the apparent wind angle off the bow (negative resistance for a tailwind).
 - Speed through water = speed over ground (no currents). Speed is a prescribed choice, so there is no speed-loss model.
 
@@ -169,7 +169,7 @@ key        = (node, timeBin(arrival))
 | Function | Parameters | Returns | Does |
 |---|---|---|---|
 | `totalResistance` | see `CalmWaterResistance.py` | `R_calm` (N) | Holtrop-Mennen. Exists. |
-| `addedWaveResistance` | `vessel, Hs, Tp, relWaveHeading, speedMs` | `N` | STAWAVE-2. New; named to avoid clashing with Holtrop's `waveResistance`. |
+| `addedWaveResistance` | `vessel, Hs, Tp, relWaveHeading, speedMs` | `N` | SNNM, all headings. New; named to avoid clashing with Holtrop's `waveResistance`. |
 | `windResistance` | `vessel, windSpeedMs, windDirFrom, headingDeg, speedMs` | `N` | Apparent-wind drag; may be negative. New. |
 | `legFuel` | `vessel, speedKn, headingDeg, timeH, weather` | `fuelKg` | Applies the section 5.1 formulas. New. |
 
@@ -181,7 +181,7 @@ key        = (node, timeBin(arrival))
 | `neighbors` | `node, departureTime, validNodes, landMask, speeds, weatherField` | list of moves `{nextNode, speedKn, headingDeg, distNm, arrivalTime}` | Generates legal moves only: 8 cells × speeds, skipping invalid nodes and land-clipping diagonals. No cost here. `arrivalTime = departureTime + distNm / speedKn`. |
 | `edgeCost` | `node, move, departureTime, vessel, weatherField, params` | `(cost, fuelKg, timeH)` | Looks up weather at `node` for `departureTime`, computes fuel with `legFuel`, then blends (formula below). |
 | `minCostPerNm` | `vessel, speeds, params` | `cMin` | Cheapest calm-water cost per nm across `speeds`. |
-| `heuristic` | `node, goal, cMin, weatherField` | cost units | `haversineNm(node, goal) * cMin`. |
+| `heuristic` | `node, goal, cMin, weatherField` | cost units | `haversineNm(node, goal) * cMin`. Calm-water only, so it overestimates on legs where negative wave/wind resistance undercuts calm cost; accepted: routes may be a few % (~5%) above optimal. Floor `R_total` in `minCostPerNm` if provable optimality is ever needed. |
 | `aStar` | `startNode, goalNode, t0, validNodes, vessel, weatherField, params` | goal key or `None` | The search loop (6.4). |
 | `reconstructPath` | `parent, goalKey` | list of legs | Backtracks (6.6). |
 | `summarizeRoute` | `legs` | totals, sets `Route` attributes | Sums distance, fuel and time. |

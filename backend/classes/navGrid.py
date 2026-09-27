@@ -51,5 +51,5 @@ class NavGrid:
                     point = Point(lon, lat)
                     if self.corridorPolygon.contains(point):
                         self.validNodes.add((row, col))
-        return self.validNodes                    
+        return self.validNodes
              

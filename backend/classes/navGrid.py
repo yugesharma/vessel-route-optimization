@@ -1,5 +1,10 @@
 import geopandas as gpd
-from shapely.geometry import Point, shape
+import numpy as np
+import shapely
+from shapely.geometry import shape
+from pyproj import Geod
+
+geod = Geod(ellps="WGS84")
 
 
 class NavGrid:
@@ -7,6 +12,8 @@ class NavGrid:
         self.corridorPolygon = None
         self.corridorBoundingBox = None
         self.validNodes = set()
+        self.latitudes = None
+        self.longitudes = None
 
     def buildCorridor(self, baseRoute, bufferNm=300):
         routeGeometry = shape(baseRoute["geometry"])
@@ -36,20 +43,40 @@ class NavGrid:
 
             return self.corridorBoundingBox
 
-    def buildGrid(self, seaMask):
-         
-        latitudes = seaMask.latitude.values
-        longitudes = seaMask.longitude.values
+    def buildGrid(self, seaMask, weatherField):
+        if not (np.array_equal(seaMask.latitude.values, weatherField.latitude.values)
+                and np.array_equal(seaMask.longitude.values, weatherField.longitude.values)):
+            raise ValueError("Sea mask and weather grids differ; (row, col) would point at different cells")
+        self.latitudes = seaMask.latitude.values
+        self.longitudes = seaMask.longitude.values
 
-        for row in range(len(latitudes)):
-            for col in range(len(longitudes)):
-                lat = latitudes[row]
-                lon = longitudes[col]
-                isSea = seaMask.values[row, col]
-             
-                if isSea:
-                    point = Point(lon, lat)
-                    if self.corridorPolygon.contains(point):
-                        self.validNodes.add((row, col))
+        lon, lat = np.meshgrid(seaMask.longitude.values, seaMask.latitude.values)
+        inCorridor = shapely.contains_xy(self.corridorPolygon, lon, lat)
+        hasWaves = weatherField["swh"].notnull().all("step").values
+
+        valid = seaMask.values & inCorridor & hasWaves
+        self.validNodes = set(map(tuple, np.argwhere(valid).tolist()))
         return self.validNodes
-             
+
+    def nodeToCoordinates(self, node):
+        row, col = node
+        return self.latitudes[row], self.longitudes[col]
+    
+    def snapToNode(self, point):
+        lon, lat = point[0], point[1]
+        minDistance = float("inf")
+        closestNode = None
+        for node in self.validNodes:
+            lat2, lon2 = self.nodeToCoordinates(node)
+            _,_,distance = geod.inv(lon, lat, lon2, lat2)
+            if distance < minDistance:
+                minDistance = distance
+                closestNode = node
+        return closestNode
+    
+    def bearings(self, node1, node2):
+        lat1, lon1 = self.nodeToCoordinates(node1)
+        lat2, lon2 = self.nodeToCoordinates(node2)
+        azimuth, _, _ = geod.inv(lon1, lat1, lon2, lat2)
+        return azimuth
+    

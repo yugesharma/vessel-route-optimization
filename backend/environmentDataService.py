@@ -2,6 +2,7 @@ import os
 import glob
 import requests
 from datetime import date
+import numpy as np
 import xarray as xr
 from cfgrib.xarray_store import open_datasets
 import matplotlib
@@ -16,6 +17,8 @@ class EnvironmentDataService:
     def __init__(self):
         self.weatherField = None
         self.validHours = None
+        self.stepHours = None
+        self.arrays = None
 
     def getWeatherData(self, bbox):
         data_dir = os.path.join(os.path.dirname(__file__), "data")
@@ -36,7 +39,18 @@ class EnvironmentDataService:
 
         self.weatherField = croppedWeather
         self.validHours = croppedWeather.valid_time.values
+        self.stepHours = croppedWeather.step.values / np.timedelta64(1, "h")
+        self.arrays = {v: croppedWeather[v].values for v in ("swh", "perpw", "dirpw", "ws", "wdir")}
         return self.weatherField, self.validHours
+    
+    def weatherAt(self, node, t):
+        row, col = node
+        s = int(np.abs(self.stepHours - t).argmin())
+        a = self.arrays
+        return {"Hs": float(a["swh"][s, row, col]), "Tp": float(a["perpw"][s, row, col]),
+                "waveDir": float(a["dirpw"][s, row, col]), "windSpeed": float(a["ws"][s, row, col]),
+                "windDir": float(a["wdir"][s, row, col])}
+
 
     
 
@@ -74,8 +88,7 @@ def downloadWeatherData(weather_dir: str) -> list[str]:
                 "https://nomads.ncep.noaa.gov/cgi-bin/filter_gefs_wave_0p25.pl"
                 f"?dir=%2Fgefs.{DATE_STRING}%2F00%2Fwave%2Fgridded"
                 f"&file=gefs.wave.t00z.c00.global.0p25.f{fh:03d}.grib2"
-                "&var_SWDIR=on&var_SWELL=on&var_SWPER=on"
-                "&var_WDIR=on&var_WIND=on&var_WVDIR=on&var_WVHGT=on&var_WVPER=on&lev_surface=on"
+                "&var_HTSGW=on&var_PERPW=on&var_DIRPW=on&var_WIND=on&var_WDIR=on&lev_surface=on"
             )
             response = session.get(url, timeout=120)
             if response.status_code != 200 or not response.content.startswith(b"GRIB"):
@@ -187,8 +200,6 @@ def cropWeather (globalWeather,bbox):
     longitude=slice(bbox["leftlon"], bbox["rightlon"])
 )
     return croppedWeather
-
-
 
 
 if __name__ == "__main__":

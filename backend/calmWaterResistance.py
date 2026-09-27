@@ -39,14 +39,13 @@ def wettedSurfaceArea(draft, B, CM, CB, CWP, ABT, L):
     return L * (2 * draft + B) * CM**0.5 * (0.453 + 0.4425 * CB - 0.2862 * CM - 0.003467 * (B/draft) + 0.3696 * CWP) + 2.38 * ABT / CB
 
 def KinematicViscosity(T):
-    # ν = 1.793 × 10^-6 * (1 + 0.0337 * T + 0.000221 * T^2)
-    # T = temperature of water
-    return 1.793 * 10**-6 * (1 + 0.0337 * T + 0.000221 * T**2)
+    # seawater, ITTC 7.5-02-01-03: ν = ((0.659e-3 (T − 1) − 0.05076)(T − 1) + 1.7688) × 10^-6  [m²/s]
+    # T = water temperature (°C); 1.188e-6 at 15 °C
+    return ((0.659e-3 * (T - 1) - 0.05076) * (T - 1) + 1.7688) * 1e-6
 
 def Density(T):
-    # ρ = 1000 * (1 - 0.003 * T + 0.00004 * T^2)
-    # T = temperature of water
-    return 1000 * (1 - 0.003 * T + 0.00004 * T**2)
+    # seawater: 1025 kg/m³ (ITTC standard); varies < 0.5% over 0–30 °C, so T is ignored
+    return 1025.0
 
 def ReynoldsNumber(V, L, nu):
     return V * L / nu
@@ -201,9 +200,24 @@ def roughnessResistance(V,rho,L,S,CB,c2,c4):
 # RT = RF(1 + k₁) + RAPP + RW + RB + RTR + RA
 # where:
 # RF = frictional resistance (ITTC-1957 line) (1 + k₁) = form factor accounting for viscous pressure resistance RAPP = appendage resistance RW = wave-making resistance RB = additional pressure resistance due to bulbous bow near waterline RTR = additional pressure resistance due to submerged transom stern RA = model–ship correlation (roughness) allowance
-def totalResistance(V,draft,B,CM,CB,CWP,ABT,TF,hB,AT,L,CP,lcb,waterTemp,Cstern=0,g=9.81):
-    displacement = CB * L * B * draft
-    S = wettedSurfaceArea(draft,B,CM,CB,CWP,ABT,L)
+def calmWaterResistance(V,waterTemp,vsl):
+    L=vsl.L
+    B=vsl.B
+    draft=vsl.draft
+    TF=vsl.TF
+    hB=vsl.hB
+    AT=vsl.AT
+    CP=vsl.CP
+    lcb=vsl.lcb
+    Cstern=vsl.Cstern
+    displacement=vsl.displacement
+    S=vsl.wettedSurfaceArea
+    CM=vsl.CM
+    CB=vsl.CB
+    CWP=vsl.CWP
+    ABT=vsl.ABT
+    g=9.81
+    
     rho = Density(waterTemp)
     nu = KinematicViscosity(waterTemp)
     Rn = ReynoldsNumber(V,L,nu)

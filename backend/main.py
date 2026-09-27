@@ -58,7 +58,8 @@ async def calculate_route(request: RouteRequest):
     # for now, return a placeholder response
     startPoint = (request.startPoint[1], request.startPoint[0])
     endPoint = (request.endPoint[1], request.endPoint[0])
-    route = calculateRoute(startPoint, endPoint)
+    dateTime = request.dateTime
+    route = calculateRoute(startPoint, endPoint, dateTime)
     return {"route": route.baseRoute, "message": "Route calculation not implemented yet"}
 
 @app.get("/")

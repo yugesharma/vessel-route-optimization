@@ -2,7 +2,8 @@ import math
 from enum import IntEnum
 
 from calmWaterResistance import LR as holtropLR
-
+from calmWaterResistance import calmWaterResistance
+from waveAddedResistance import waveAddedResistance
 
 class SternShape(IntEnum):
     PRAM_WITH_GONDOLA = -25
@@ -12,7 +13,8 @@ class SternShape(IntEnum):
 
 
 class Vessel:
-    def __init__(self, L, B, draft, TF, CM, CB, CWP, ABT, hB, AT, lcb, Cstern=SternShape.NORMAL, kyy=0.25, TA=None, LE=None, LR=None):
+    def __init__(self, L, B, draft, TF, CM, CB, CWP, ABT, hB, AT, lcb, Cstern=SternShape.NORMAL, kyy=0.25, TA=None, LE=None, LR=None,
+                 eta=0.70, sfoc=175.0, mcrKw=27000.0):
         self.L = L
         self.B = B
         self.draft = draft
@@ -32,8 +34,15 @@ class Vessel:
         self.E1 = 0 # Bow entrance angle
         self.E2 = 0 # Stern entrance angle
         self.CP = 0 # Prismatic coefficient
-        self.displacement = 0
-        self.wettedSurfaceArea = 0
+        # fuel model
+        self.eta = eta  # overall propulsive efficiency: effective power / brake power
+        self.sfoc = sfoc  # specific fuel oil consumption (g/kWh)
+        self.mcrKw = mcrKw  # engine maximum continuous rating (kW); legs needing more are infeasible
+
+        # derived hull values used by the calm-water model
+        self.getCP()
+        self.getDisplacement()
+        self.getWettedSurfaceArea()
 
     def getCP(self):
         self.CP = self.CB / self.CM
@@ -63,3 +72,31 @@ class Vessel:
             + 2.38 * self.ABT / self.CB
         )
         return self.wettedSurfaceArea
+    
+    def legFuel(self, speedKn, headingDeg, timeH, weather, waterTemp=15.0):
+        #no R_wind yet, add it later
+        V = speedKn * 0.5144
+        R_calm = calmWaterResistance(V, waterTemp, self)  # N
+        R_wave = waveAddedResistance(self, weather["Hs"], weather["Tp"], weather["waveDir"] - headingDeg, V)  # N, may be < 0
+        R_total = R_calm + R_wave
+        P_B = R_total * V / 1000 / self.eta  # brake power (kW)
+        if P_B > 0.9*self.mcrKw:
+            return None
+        return P_B * self.sfoc * timeH / 1000  # kW * g/kWh * h = g -> kg
+
+
+# KVLCC2 (KRISO VLCC), the single ship used for now.
+# Published full-scale particulars: SIMMAN 2014 
+vsl = Vessel(
+    L=320.0, B=58.0, draft=20.8, TF=20.8, TA=20.8,  # even keel, design draught
+    CB=0.8098, CM=0.998, lcb=3.48,
+    CWP=0.873,  # not published; Schneekluth estimate (1 + 2CB) / 3
+    ABT=0, hB=0,  # bulb area/centre not published; 0 ignores the bulb in Holtrop
+    AT=0,  # transom not immersed at design draught
+    Cstern=SternShape.U_SHAPED_HOGNER,
+    kyy=0.25,
+    LE=60.0,  # fitted to KVLCC2 added-resistance tests (Kim et al. 2017); Holtrop-mirror estimate gave 36 m
+    eta=0.70,  # assumed; typical tanker 0.65-0.75, replace with sea-trial/model-test value
+    sfoc=175.0,  # assumed; modern slow-speed two-stroke 170-190 g/kWh
+    mcrKw=27000.0,  # assumed; not published for KVLCC2, typical VLCC main engine
+)

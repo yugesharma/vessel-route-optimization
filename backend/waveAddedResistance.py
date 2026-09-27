@@ -80,7 +80,7 @@ def snnmTransfer(omega, alpha, vessel, V):
     return R_AWM + R_AWR
 
 
-def addedWaveResistance(vessel, Hs, Tp, relWaveHeading, speedMs):
+def waveAddedResistance(vessel, Hs, Tp, relWaveHeading, speedMs):
     """Mean added resistance in irregular waves [N]. relWaveHeading = waveDirFrom - heading, 0 = head seas."""
     if Hs <= 0 or Tp <= 0:
         return 0.0
@@ -92,29 +92,26 @@ def addedWaveResistance(vessel, Hs, Tp, relWaveHeading, speedMs):
 
 
 if __name__ == "__main__":
-    from classes.vessel import Vessel
+    from classes.vessel import vsl
 
-    # KVLCC2, 15 kn
-    ship = Vessel(L=320.0, B=58.0, draft=20.8, TF=20.8, CM=0.998, CB=0.8098, CWP=0.9,
-                  ABT=0, hB=0, AT=0, lcb=3.48)
     V = 15 * 0.5144
 
-    E1, E2 = ship.getEntranceRunAngles()
-    print(f"LE={ship.LE:.0f} m LR={ship.LR:.0f} m  E1={math.degrees(E1):.1f} deg E2={math.degrees(E2):.1f} deg")
-    assert 30 < math.degrees(E1) < 45 and 15 < math.degrees(E2) < 25
+    E1, E2 = vsl.getEntranceRunAngles()
+    print(f"LE={vsl.LE:.0f} m LR={vsl.LR:.0f} m  E1={math.degrees(E1):.1f} deg E2={math.degrees(E2):.1f} deg")
+    assert abs(math.degrees(E1) - 25.6) < 0.1 and 15 < math.degrees(E2) < 25  # LE=60 given, LR estimated
 
     # spectrum integrates to Hs^2/16
     w = np.linspace(0.05, 6, 5000)
     assert abs(np.trapezoid(jonswap(w, 3.0, 10.0), w) - 9 / 16) < 0.02
 
     print("heading  R_AW (kN)   Hs=3 Tp=9  (STAWAVE-2 head sea was 322 kN)")
-    R = {h: addedWaveResistance(ship, 3.0, 9.0, h, V) for h in range(0, 181, 15)}
+    R = {h: waveAddedResistance(vsl, 3.0, 9.0, h, V) for h in range(0, 181, 15)}
     for h, r in R.items():
         print(f"{h:5d}  {r / 1e3:8.0f}")
         assert math.isfinite(r)
     assert 20e3 < R[0] < 1e6
     assert R[0] > R[180]
-    assert addedWaveResistance(ship, 3.0, 9.0, 60, V) == addedWaveResistance(ship, 3.0, 9.0, -60, V) \
-        == addedWaveResistance(ship, 3.0, 9.0, 300, V)
-    assert abs(addedWaveResistance(ship, 6.0, 9.0, 0, V) / R[0] - 4) < 1e-9
+    assert waveAddedResistance(vsl, 3.0, 9.0, 60, V) == waveAddedResistance(vsl, 3.0, 9.0, -60, V) \
+        == waveAddedResistance(vsl, 3.0, 9.0, 300, V)
+    assert abs(waveAddedResistance(vsl, 6.0, 9.0, 0, V) / R[0] - 4) < 1e-9
     print("ok")

@@ -25,4 +25,4 @@ class GeographicDataService:
         self.seaMask = croppedSeaMask
         return self.seaMask
     
-
+    

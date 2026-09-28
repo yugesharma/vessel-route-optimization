@@ -59,7 +59,10 @@ async def calculate_route(request: RouteRequest):
     startPoint = (request.startPoint[1], request.startPoint[0])
     endPoint = (request.endPoint[1], request.endPoint[0])
     dateTime = request.dateTime
-    route = calculateRoute(startPoint, endPoint, dateTime)
+    distanceWeight = request.distanceWeight
+    windWeight = request.windWeight
+    waveWeight = request.waveWeight
+    route = calculateRoute(startPoint, endPoint, dateTime, distanceWeight, windWeight, waveWeight)
     return {"route": route.baseRoute, "message": "Route calculation not implemented yet"}
 
 @app.get("/")

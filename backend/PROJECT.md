@@ -253,7 +253,12 @@ These populate `Route.distance`, `Route.totalFuel`, `Route.averageSpeed` and the
 
 - **Antimeridian**: corridors crossing 180° are not handled. With the longitude axis normalised to -180..180, the Greenwich crossing (West Africa → Turkey) is now a plain slice, but a corridor that straddles ±180° would still need two slices and a split polygon.
 - **Memory**: the global dataset is about 2 GB as float32 (721 × 1440 points × 5 variables × 105 steps). Keep it on disk and open it lazily; only the per-query crop goes into memory.
-- **Stale cache**: query results are only as current as the last downloaded cycle. Store the cycle time with the dataset and use it as the reference for `t`.
+- **Forecast cycle selection (deferred)**: `DATE_STRING` is today's *local* date and the download assumes today's 00z cycle is complete. Before NOMADS finishes publishing (a few hours after 00z UTC) the download fails with a 404 part-way through; partial steps stay on disk and resume next run. Planned fix:
+  1. Compute the cycle date in UTC (`datetime.now(timezone.utc)`), not local time; on EDT the local date lags UTC from 20:00 to midnight.
+  2. Pick the newest *complete* 00z cycle: one request for the last step (f168); if it's missing, fall back to the previous day (reuse the combined file on disk if present).
+  3. Reference `t` to the cycle's start time: `t0 = departure − cycle start` in hours, taken from the dataset's `time`/`valid_time`. `setup` currently assumes `t = 0`, which is wrong whenever the voyage doesn't depart exactly at 00z of the cycle.
+  4. Warn when the voyage runs past the forecast end.
+  06z/12z/18z cycles are out of scope until fresher weather matters.
 - **`Route` point order**: `getBaseRoute()` passes `startPoint`/`endPoint` straight to `searoute`, which needs `[lon, lat]`; the API sends `[lat, lon]`.
 - **Voyage longer than the forecast** (384 h): weather is clamped to the last step.
 - **Time-bin approximation**: same-bin arrivals are merged, so optimality is up to the bin width.

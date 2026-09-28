@@ -7,6 +7,8 @@ type SidebarProps = {
   distanceWeight: number
   windWeight: number
   waveWeight: number
+  fuelTimeWeight: number
+  setFuelTimeWeight: (value: number) => void
   startLocation: string
   endLocation: string
   setStartLocation: (value: string) => void
@@ -22,7 +24,7 @@ type SidebarProps = {
 
 
 
-function Sidebar({distanceWeight, setDistanceWeight, windWeight, setWindWeight, waveWeight, setWaveWeight, startLocation, endLocation, setStartLocation, setEndLocation, handleStartLocationSearch, handleEndLocationSearch, generateRoute, dateTime, setDateTime, routeDistance, duration}: SidebarProps) {
+function Sidebar({distanceWeight, setDistanceWeight, windWeight, setWindWeight, waveWeight, setWaveWeight, fuelTimeWeight, setFuelTimeWeight, startLocation, endLocation, setStartLocation, setEndLocation, handleStartLocationSearch, handleEndLocationSearch, generateRoute, dateTime, setDateTime, routeDistance, duration}: SidebarProps) {
   const durationDays = duration !== null ? Math.floor(duration / 24) : 0
   const durationHours = duration !== null ? duration % 24 : 0
   return (
@@ -60,6 +62,17 @@ function Sidebar({distanceWeight, setDistanceWeight, windWeight, setWindWeight, 
         <input type="range" id="windWeight" name="windWeight" min="0" max="1" step="0.1" value={windWeight} onChange={(e) => setWindWeight(Number(e.target.value))} />
       </div>
 
+<div className="form-group">
+    <label htmlFor="fuelTimeWeight">Fuel vs. Time:</label>
+      
+
+        <div className="fuel-time-labels">
+        <span> Save Fuel</span>
+        <span> Save Time</span>
+        </div>
+        <input type="range" id="fuelTimeWeight" name="fuelTimeWeight" min="0" max="1" step="0.1" value={fuelTimeWeight} onChange={(e) => setFuelTimeWeight(Number(e.target.value))} />
+        </div>
+
 <div className="form-group">   
         <div className="slider-header">
   <label htmlFor="waveWeight">Wave Weight:</label>
@@ -75,7 +88,6 @@ function Sidebar({distanceWeight, setDistanceWeight, windWeight, setWindWeight, 
           <p>Distance: {routeDistance.toFixed(2)} nautical miles</p>
           <p>Estimated Duration: {duration !== null ? `${durationDays} days, ${durationHours.toFixed(1)} hours`: 'N/A'}</p>
         </div>
-  
       )}
     </div>
   )

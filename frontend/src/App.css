@@ -62,3 +62,9 @@
   display: flex;
   justify-content: space-between;
 }
+
+.fuel-time-labels {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}

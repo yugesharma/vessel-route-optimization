@@ -11,6 +11,7 @@ function App() {
   const [distanceWeight, setDistanceWeight] = useState(0.5)
   const [windWeight, setWindWeight] = useState(0.5)
   const [waveWeight, setWaveWeight] = useState(0.5)
+  const [fuelTimeWeight, setFuelTimeWeight] = useState(0.5)
   const [startLocation, setStartLocation] = useState('')
   const [endLocation, setEndLocation] = useState('')
   const [routePoints, setRoutePoints] = useState<[number, number][]>([])
@@ -39,7 +40,7 @@ function App() {
       
       setRoutePoints([])
 
-        const response = await calculateRoute(startPoint, endPoint, dateTime, distanceWeight, windWeight, waveWeight)
+        const response = await calculateRoute(startPoint, endPoint, dateTime, distanceWeight, windWeight, waveWeight, fuelTimeWeight)
 
         
         console.log(response.data)
@@ -56,7 +57,7 @@ function App() {
 
   return (
     <div className="app-layout">
-      <Sidebar startPoint={startPoint} startLocation={startLocation} setStartLocation={setStartLocation} endPoint={endPoint} endLocation={endLocation} setEndLocation={setEndLocation} setDateTime={setDateTime} dateTime={dateTime} distanceWeight={distanceWeight} setDistanceWeight={setDistanceWeight} windWeight={windWeight} setWindWeight={setWindWeight} waveWeight={waveWeight} setWaveWeight={setWaveWeight} handleStartLocationSearch={handleStartLocationChange} handleEndLocationSearch={handleEndLocationChange} generateRoute={generateRoute} routeDistance={routeDistance} duration={duration} />
+      <Sidebar startPoint={startPoint} startLocation={startLocation} setStartLocation={setStartLocation} endPoint={endPoint} endLocation={endLocation} setEndLocation={setEndLocation} setDateTime={setDateTime} dateTime={dateTime} distanceWeight={distanceWeight} setDistanceWeight={setDistanceWeight} windWeight={windWeight} setWindWeight={setWindWeight} waveWeight={waveWeight} setWaveWeight={setWaveWeight} handleStartLocationSearch={handleStartLocationChange} handleEndLocationSearch={handleEndLocationChange} generateRoute={generateRoute} routeDistance={routeDistance} duration={duration} fuelTimeWeight={fuelTimeWeight} setFuelTimeWeight={setFuelTimeWeight} />
       <MapView startPoint={startPoint} setStartPoint={setStartPoint} endPoint={endPoint} setEndPoint={setEndPoint} setStartLocation={setStartLocation} setEndLocation={setEndLocation} routePoints={routePoints} />
     </div>
   )

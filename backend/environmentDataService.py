@@ -51,7 +51,8 @@ class EnvironmentDataService:
                 "waveDir": float(a["dirpw"][s, row, col]), "windSpeed": float(a["ws"][s, row, col]),
                 "windDir": float(a["wdir"][s, row, col])}
 
-
+    def getCycleStart(self):
+        return self.validHours[0]
     
 
 

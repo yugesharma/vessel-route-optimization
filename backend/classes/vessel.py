@@ -78,11 +78,17 @@ class Vessel:
         V = speedKn * 0.5144
         R_calm = calmWaterResistance(V, waterTemp, self)  # N
         R_wave = waveAddedResistance(self, weather["Hs"], weather["Tp"], weather["waveDir"] - headingDeg, V)  # N, may be < 0
-        R_total = R_calm + R_wave
+        R_total = R_calm + max(0, R_wave)  # floor R_wave at 0 so no leg beats calm water; keeps the A* heuristic admissible
         P_B = R_total * V / 1000 / self.eta  # brake power (kW)
         if P_B > 0.9*self.mcrKw:
             return None
         return P_B * self.sfoc * timeH / 1000  # kW * g/kWh * h = g -> kg
+    
+    def calmWaterFuelPerNM(self, speedKn, waterTemp=15.0):
+        V = speedKn * 0.5144
+        R_calm = calmWaterResistance(V, waterTemp, self)  # N
+        P_B_calm= R_calm * V / 1000 / self.eta
+        return P_B_calm * self.sfoc / 1000 / speedKn  # kW * g/kWh / 1000 = g -> kg/NM
 
 
 # KVLCC2 (KRISO VLCC), the single ship used for now.

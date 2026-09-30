@@ -5,10 +5,13 @@ from classes.vessel import vsl
 from environmentDataService import EnvironmentDataService
 from geographicDataService import GeographicDataService
 from pyproj import Geod
+from math import floor
+import heapq
+import numpy as np
 
 geod = Geod(ellps="WGS84")
 
-def setup(startPoint, endPoint):
+def setup(startPoint, endPoint,dateTime,speeds,distanceWeight,fuelTimeWeight,timeBinSize):
     route = Route(startPoint, endPoint)
     route.getBaseRoute()
     
@@ -33,6 +36,15 @@ def setup(startPoint, endPoint):
     startWeather = environmentDataService.weatherAt(startNode, 0)
     endWeather = environmentDataService.weatherAt(endNode, 0)
 
+    t0=(np.datetime64(dateTime) - environmentDataService.getCycleStart()) / np.timedelta64(1, "h")
+
+    costMin=float('inf')
+    for speed in speeds:
+        fuelPerNM = vsl.calmWaterFuelPerNM(speed)
+        costPerNM=distanceWeight+fuelTimeWeight*fuelPerNM+(1-fuelTimeWeight)/speed
+        costMin=min(costMin,costPerNM)
+
+
     print('start wave height:', startWeather["Hs"])
     print('end wave height:', endWeather["Hs"])
 
@@ -41,10 +53,16 @@ def setup(startPoint, endPoint):
     # print(geographicDataService.seaMask)
     # print("Valid nodes:", len(navGrid.validNodes))
 
-    return navGrid, environmentDataService, startNode, endNode
+    return route, navGrid, environmentDataService, startNode, endNode, t0, costMin
 
-def calculateRoute(startPoint, endPoint, dateTime, distanceWeight, windWeight, waveWeight):
-    setup(startPoint, endPoint)
+def calculateRoute(startPoint, endPoint, dateTime, distanceWeight=1.0, fuelTimeWeight=0.5):
+    speeds=[6,8,10,12,14]
+    timeBinSize=3
+    route, navGrid, environmentDataService, startNode, endNode, t0, costMin = setup(
+        startPoint, endPoint, dateTime, speeds, distanceWeight, fuelTimeWeight, timeBinSize)
+    goalKey, g, parents = aStar(startNode, endNode, t0, vsl, speeds, navGrid, environmentDataService,
+                                costMin, timeBinSize, distanceWeight, fuelTimeWeight)
+    return route, goalKey, parents
 
 
 def neighbors(node, departureTime,navGrid,speeds):
@@ -72,11 +90,58 @@ def neighbors(node, departureTime,navGrid,speeds):
 
     return legalMoves
 
-def edgeCost(node,move,departureTime,vsl,environmentDataService,distanceWeight=1.0,fuelWeight=1.0,timeWeight=1.0):
+def edgeCost(node,move,departureTime,vsl,environmentDataService,distanceWeight=1.0,fuelTimeWeight=0.5):
     neighbor,speed,heading,distance,timeH,arrivalTime=move
     weather=environmentDataService.weatherAt(node,departureTime)
     fuel=vsl.legFuel(speed,heading,timeH,weather)
     if fuel is None:
         return None  # speed not achievable in this weather (needs more than MCR)
-    cost=distanceWeight*distance+fuelWeight*fuel+timeWeight*timeH
+    cost=distanceWeight*distance+fuelTimeWeight*fuel+(1-fuelTimeWeight)*timeH
     return cost
+
+def timeBin(t0, t, binSize):
+    return floor((t-t0)/binSize)
+
+def heuristic(node,goal,navGrid,costMin):
+    lat1, lon1 = navGrid.nodeToCoordinates(node)
+    lat2, lon2 = navGrid.nodeToCoordinates(goal)
+    _,_,distanceM = geod.inv(lon1,lat1,lon2,lat2)
+    distanceNm = distanceM / 1852
+    return distanceNm*costMin
+
+def aStar(start,goal,t0,vsl,speeds,navGrid,environmentDataService,costMin,timeBinSize,distanceWeight=1.0,fuelTimeWeight=0.5):
+    bestCost={}
+    bestCost[(start,0)]=0
+    parents={}
+    parents[(start,0)]=None  # parent is a tuple (currKey,speed,heading,distance,timeH,arrivalTime,g2)
+    g=0
+    h=heuristic(start,goal,navGrid,costMin)
+    f=g+h
+    openList=[(f,0,g,h,start,t0)]
+    heapq.heapify(openList)
+    while openList:
+        f,counter,g,h,currentNode,depTime = heapq.heappop(openList)
+        currKey=(currentNode,timeBin(t0,depTime,timeBinSize))
+
+        if currKey in bestCost and g > bestCost[currKey]:
+            continue
+
+        if currentNode == goal:
+            return currKey,g,parents
+        moves=neighbors(currentNode,depTime,navGrid,speeds)
+        for move in moves:
+            nextNode,speed,heading,distance,timeH,arrivalTime=move
+            cost = edgeCost(currentNode,move,depTime,vsl,environmentDataService,distanceWeight,fuelTimeWeight)
+            if cost is None:
+                continue
+            g2 =g+ cost
+            key2=(nextNode,timeBin(t0,arrivalTime,timeBinSize))
+
+            if key2 not in bestCost or g2 < bestCost[key2]:
+                bestCost[key2]=g2
+                
+                parents[key2]=(currKey,speed,heading,distance,timeH,arrivalTime,g2) 
+                h2=heuristic(nextNode,goal,navGrid,costMin)
+                f2=g2+h2
+                heapq.heappush(openList,(f2,counter+1,g2,h2,nextNode,arrivalTime))
+    return None,None,None

@@ -44,7 +44,8 @@ class RouteRequest(BaseModel):
     dateTime: str
     distanceWeight: float
     windWeight: float
-    waveWeight: float 
+    waveWeight: float
+    fuelTimeWeight: float
 
 
 @app.get("/geocode")
@@ -62,7 +63,8 @@ async def calculate_route(request: RouteRequest):
     distanceWeight = request.distanceWeight
     windWeight = request.windWeight
     waveWeight = request.waveWeight
-    route = calculateRoute(startPoint, endPoint, dateTime, distanceWeight, windWeight, waveWeight)
+    fuelTimeWeight = request.fuelTimeWeight
+    route, goalKey, parents = calculateRoute(startPoint, endPoint, dateTime, distanceWeight, windWeight, waveWeight, fuelTimeWeight)
     return {"route": route.baseRoute, "message": "Route calculation not implemented yet"}
 
 @app.get("/")

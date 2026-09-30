@@ -62,7 +62,9 @@ def calculateRoute(startPoint, endPoint, dateTime, distanceWeight=1.0, fuelTimeW
         startPoint, endPoint, dateTime, speeds, distanceWeight, fuelTimeWeight, timeBinSize)
     goalKey, g, parents = aStar(startNode, endNode, t0, vsl, speeds, navGrid, environmentDataService,
                                 costMin, timeBinSize, distanceWeight, fuelTimeWeight)
-    return route, goalKey, parents
+    if goalKey is None:
+        return route, None  # no route inside the corridor
+    return route, reconstructPath(parents, goalKey, navGrid, t0)
 
 
 def neighbors(node, departureTime,navGrid,speeds):
@@ -97,7 +99,7 @@ def edgeCost(node,move,departureTime,vsl,environmentDataService,distanceWeight=1
     if fuel is None:
         return None  # speed not achievable in this weather (needs more than MCR)
     cost=distanceWeight*distance+fuelTimeWeight*fuel+(1-fuelTimeWeight)*timeH
-    return cost
+    return cost,fuel
 
 def timeBin(t0, t, binSize):
     return floor((t-t0)/binSize)
@@ -113,7 +115,7 @@ def aStar(start,goal,t0,vsl,speeds,navGrid,environmentDataService,costMin,timeBi
     bestCost={}
     bestCost[(start,0)]=0
     parents={}
-    parents[(start,0)]=None  # parent is a tuple (currKey,speed,heading,distance,timeH,arrivalTime,g2)
+    parents[(start,0)]=None  # parent is a tuple (currKey,speed,heading,distance,timeH,arrivalTime,g2,fuel)
     g=0
     h=heuristic(start,goal,navGrid,costMin)
     f=g+h
@@ -131,17 +133,36 @@ def aStar(start,goal,t0,vsl,speeds,navGrid,environmentDataService,costMin,timeBi
         moves=neighbors(currentNode,depTime,navGrid,speeds)
         for move in moves:
             nextNode,speed,heading,distance,timeH,arrivalTime=move
-            cost = edgeCost(currentNode,move,depTime,vsl,environmentDataService,distanceWeight,fuelTimeWeight)
-            if cost is None:
+            result = edgeCost(currentNode,move,depTime,vsl,environmentDataService,distanceWeight,fuelTimeWeight)
+            if result is None:
                 continue
+            cost,fuel=result
             g2 =g+ cost
             key2=(nextNode,timeBin(t0,arrivalTime,timeBinSize))
 
             if key2 not in bestCost or g2 < bestCost[key2]:
                 bestCost[key2]=g2
                 
-                parents[key2]=(currKey,speed,heading,distance,timeH,arrivalTime,g2) 
+                parents[key2]=(currKey,speed,heading,distance,timeH,arrivalTime,g2,fuel)
                 h2=heuristic(nextNode,goal,navGrid,costMin)
                 f2=g2+h2
                 heapq.heappush(openList,(f2,counter+1,g2,h2,nextNode,arrivalTime))
     return None,None,None
+
+def reconstructPath(parents, goalKey, navGrid, t0):
+    # walk parent records from the goal back to the start, then reverse
+    legs=[]
+    key=goalKey
+    while parents[key] is not None:
+        prevKey,speed,heading,distance,timeH,arrivalTime,g,fuel=parents[key]
+        lat,lon=navGrid.nodeToCoordinates(key[0])
+        legs.append({"lat":float(lat),"lon":float(lon),"speedKn":speed,"headingDeg":heading,
+                     "arrivalTime":arrivalTime,"distNm":distance,"timeH":timeH,"fuelKg":fuel})
+        key=prevKey
+    # start point: no leg led here, so zero distance/time/fuel
+    lat,lon=navGrid.nodeToCoordinates(key[0])
+    legs.append({"lat":float(lat),"lon":float(lon),"speedKn":None,"headingDeg":None,
+                 "arrivalTime":t0,"distNm":0.0,"timeH":0.0,"fuelKg":0.0})
+    legs.reverse()
+    return legs
+

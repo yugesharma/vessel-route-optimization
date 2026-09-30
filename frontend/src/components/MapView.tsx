@@ -23,7 +23,8 @@ type MapViewProps = {
   setEndPoint: (point: [number, number] | null) => void
   setStartLocation: (value: string) => void
   setEndLocation: (value: string) => void
-  routePoints: [number, number][]
+  basicRoutePoints: [number, number][]
+  optimizedRoutePoints: [number, number][]
 }
 
 function MapUpdater({
@@ -46,7 +47,7 @@ function MapUpdater({
   return null
 }
 
-function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, setStartLocation, setEndLocation, routePoints }: MapViewProps) {
+function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, setStartLocation, setEndLocation, basicRoutePoints, optimizedRoutePoints }: MapViewProps) {
   const [selectingStart, setSelectingStart] = useState(true)
   const handleMapClick = (latlng: [number, number]) => {
     if (selectingStart) {
@@ -79,9 +80,13 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, setStartLoc
   
   {endPoint && <CircleMarker center={endPoint} radius={5} pathOptions={{ color: 'blue' }} />}
 
-  {routePoints && routePoints.length > 0 && (
-  <Polyline positions={routePoints} />
+  {basicRoutePoints && basicRoutePoints.length > 0 && (
+  <Polyline positions={basicRoutePoints} pathOptions={{ color: 'blue' }} />
 )}
+  {optimizedRoutePoints && optimizedRoutePoints.length > 0 && (
+  <Polyline positions={optimizedRoutePoints} pathOptions={{ color: 'green' }} />
+)}
+
 </MapContainer>
 
 }

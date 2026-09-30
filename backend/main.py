@@ -64,8 +64,8 @@ async def calculate_route(request: RouteRequest):
     windWeight = request.windWeight
     waveWeight = request.waveWeight
     fuelTimeWeight = request.fuelTimeWeight
-    route, goalKey, parents = calculateRoute(startPoint, endPoint, dateTime, distanceWeight, windWeight, waveWeight, fuelTimeWeight)
-    return {"route": route.baseRoute, "message": "Route calculation not implemented yet"}
+    basicRoute, optimizedRoute = calculateRoute(startPoint, endPoint, dateTime, distanceWeight, fuelTimeWeight)
+    return {"basicRoute": basicRoute.baseRoute, "optimizedRoute": optimizedRoute, "message": "Route calculation not implemented yet"}
 
 @app.get("/")
 async def root():

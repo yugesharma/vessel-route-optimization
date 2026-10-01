@@ -8,8 +8,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 import os
 import requests
+from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
+
+waveOverlayDir = os.path.join(os.path.dirname(__file__), "data", "waveOverlays")
+app.mount("/wave-overlays", StaticFiles(directory=waveOverlayDir), name="wave-overlays")
 
 load_dotenv()
 geoapify_api_key = os.getenv("GEOAPIFY_API_KEY")
@@ -64,8 +68,8 @@ async def calculate_route(request: RouteRequest):
     windWeight = request.windWeight
     waveWeight = request.waveWeight
     fuelTimeWeight = request.fuelTimeWeight
-    basicRoute, optimizedRoute = calculateRoute(startPoint, endPoint, dateTime, distanceWeight, fuelTimeWeight)
-    return {"basicRoute": basicRoute.baseRoute, "optimizedRoute": optimizedRoute, "message": "Route calculation not implemented yet"}
+    basicRoute, optimizedRoute, overlayBounds = calculateRoute(startPoint, endPoint, dateTime, distanceWeight, fuelTimeWeight)
+    return {"basicRoute": basicRoute.baseRoute, "optimizedRoute": optimizedRoute, "waveOverlayUrl": "/wave-overlays/wave_0.png", "overlayBounds": overlayBounds, "message": "Route calculation not implemented yet"}
 
 @app.get("/")
 async def root():

@@ -26,6 +26,10 @@ def setup(startPoint, endPoint,dateTime,speeds,distanceWeight,fuelTimeWeight,tim
     # cropped land/water mask for the route corridor
     geographicDataService = GeographicDataService()
     geographicDataService.getSeaMask(bbox)
+    overlayPath, overlayBounds = environmentDataService.createWeatherOverlay(0)
+    
+    print("Overlay bounds:", overlayBounds)
+
 
     # build valid navigation grid: nodes inside the corridor, over sea, with wave data
     navGrid.buildGrid(geographicDataService.seaMask, environmentDataService.weatherField)
@@ -53,18 +57,18 @@ def setup(startPoint, endPoint,dateTime,speeds,distanceWeight,fuelTimeWeight,tim
     # print(geographicDataService.seaMask)
     # print("Valid nodes:", len(navGrid.validNodes))
 
-    return route, navGrid, environmentDataService, startNode, endNode, t0, costMin
+    return route, navGrid, environmentDataService, startNode, endNode, t0, costMin, overlayBounds
 
 def calculateRoute(startPoint, endPoint, dateTime, distanceWeight=1.0, fuelTimeWeight=0.5):
     speeds=[6,8,10,12,14]
     timeBinSize=3
-    route, navGrid, environmentDataService, startNode, endNode, t0, costMin = setup(
+    route, navGrid, environmentDataService, startNode, endNode, t0, costMin, overlayBounds = setup(
         startPoint, endPoint, dateTime, speeds, distanceWeight, fuelTimeWeight, timeBinSize)
     goalKey, g, parents = aStar(startNode, endNode, t0, vsl, speeds, navGrid, environmentDataService,
                                 costMin, timeBinSize, distanceWeight, fuelTimeWeight)
     if goalKey is None:
-        return route, None  # no route inside the corridor
-    return route, reconstructPath(parents, goalKey, navGrid, t0)
+        return route, None, overlayBounds
+    return route, reconstructPath(parents, goalKey, navGrid, t0), overlayBounds
 
 
 def neighbors(node, departureTime,navGrid,speeds):

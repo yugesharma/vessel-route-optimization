@@ -41,6 +41,9 @@ class EnvironmentDataService:
         self.validHours = croppedWeather.valid_time.values
         self.stepHours = croppedWeather.step.values / np.timedelta64(1, "h")
         self.arrays = {v: croppedWeather[v].values for v in ("swh", "perpw", "dirpw", "ws", "wdir")}
+
+       
+
         return self.weatherField, self.validHours
     
     def weatherAt(self, node, t):
@@ -53,6 +56,39 @@ class EnvironmentDataService:
 
     def getCycleStart(self):
         return self.validHours[0]
+
+    def createWeatherOverlay(self, stepIndex):
+        waveData = self.weatherField["swh"].isel(step=stepIndex)
+        north = float(waveData.latitude.values[0])
+        south = float(waveData.latitude.values[-1])
+        west = float(waveData.longitude.values[0])
+        east = float(waveData.longitude.values[-1])
+        print("Wave min:", float(self.weatherField["swh"].min()))
+        print("Wave max:", float(self.weatherField["swh"].max()))
+        waveOverlayDir = os.path.join(
+            os.path.dirname(__file__),
+            "data",
+            "waveOverlays"
+            )
+
+        os.makedirs(waveOverlayDir, exist_ok=True)
+
+        outPath = os.path.join(waveOverlayDir, f"wave_{stepIndex}.png")
+
+        fig, ax = plt.subplots()
+        ax.imshow(waveData.values, cmap="turbo", origin="upper", vmin=0, vmax=3.5)
+        ax.axis("off")
+
+        fig.savefig(
+            outPath,
+            transparent=True,
+            bbox_inches="tight",
+            pad_inches=0
+        )
+
+        plt.close(fig)
+
+        return outPath, {"north": north, "south": south, "west": west, "east": east}
     
 
 
@@ -200,6 +236,7 @@ def cropWeather (globalWeather,bbox):
     latitude=slice(bbox["toplat"], bbox["bottomlat"]),
     longitude=slice(bbox["leftlon"], bbox["rightlon"])
 )
+    
     return croppedWeather
 
 

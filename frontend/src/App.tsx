@@ -19,6 +19,18 @@ function App() {
   const [dateTime, setDateTime] = useState('')
   const [routeDistance, setRouteDistance] = useState<number | null>(null)
   const [duration, setDuration] = useState<number | null>(null)
+  const [optimizedRouteDistance, setOptimizedRouteDistance] = useState<number | null>(null)
+  const [optimizedRouteTime, setOptimizedRouteTime] = useState<number | null>(null)
+  const [optimizedRouteFuel, setOptimizedRouteFuel] = useState<number | null>(null)
+  const [optimizedRouteAvgSpeed, setOptimizedRouteAvgSpeed] = useState<number | null>(null)
+  const [waveOverlayUrl, setWaveOverlayUrl] = useState<string | null>(null)
+  const [overlayBounds, setOverlayBounds] = useState<{
+    north: number
+    south: number
+    east: number
+    west: number
+  } | null>(null)
+
 
   const handleStartLocationChange = async () => {
     const response = await fetch(
@@ -44,6 +56,8 @@ function App() {
 
         const response = await calculateRoute(startPoint, endPoint, dateTime, distanceWeight, windWeight, waveWeight, fuelTimeWeight)
 
+        setWaveOverlayUrl(response.data.waveOverlayUrl)
+        setOverlayBounds(response.data.overlayBounds)
         
         console.log(response.data)
         
@@ -53,20 +67,34 @@ function App() {
          
         const legs = response.data.optimizedRoute ?? []
 
+        const optimizedDistance = legs.reduce((sum: number, leg: any) => { return sum + leg.distNm},0)
+        const optimizedTime = legs.reduce((sum: number, leg: any) => { return sum + leg.timeH},0)
+        const optimizedFuel = legs.reduce((sum: number, leg: any) => { return sum + leg.fuelKg},0)
+        const optimizedAvgSpeed = optimizedDistance / optimizedTime
+        
+        
+        setOptimizedRouteAvgSpeed(optimizedAvgSpeed)
+        setOptimizedRouteDistance(optimizedDistance)
+        setOptimizedRouteTime(optimizedTime)
+        setOptimizedRouteFuel(optimizedFuel)
+        
+        console.log("Optimized average speed:", optimizedAvgSpeed)
+        console.log("Optimized fuel:", optimizedFuel)
+        console.log("Optimized distance:", optimizedDistance)
+        console.log("Optimized time:", optimizedTime)
+
         const optimizedPoints = legs.map(
           (leg: any) => [leg.lat, leg.lon] as [number, number])
         
         setOptimizedRoutePoints(optimizedPoints)
-
         setRouteDistance(response.data.basicRoute.properties.length)
-
         setDuration(response.data.basicRoute.properties.duration_hours)
         }
 
   return (
     <div className="app-layout">
       <Sidebar startPoint={startPoint} startLocation={startLocation} setStartLocation={setStartLocation} endPoint={endPoint} endLocation={endLocation} setEndLocation={setEndLocation} setDateTime={setDateTime} dateTime={dateTime} distanceWeight={distanceWeight} setDistanceWeight={setDistanceWeight} windWeight={windWeight} setWindWeight={setWindWeight} waveWeight={waveWeight} setWaveWeight={setWaveWeight} handleStartLocationSearch={handleStartLocationChange} handleEndLocationSearch={handleEndLocationChange} generateRoute={generateRoute} routeDistance={routeDistance} duration={duration} fuelTimeWeight={fuelTimeWeight} setFuelTimeWeight={setFuelTimeWeight} />
-      <MapView startPoint={startPoint} setStartPoint={setStartPoint} endPoint={endPoint} setEndPoint={setEndPoint} setStartLocation={setStartLocation} setEndLocation={setEndLocation} basicRoutePoints={basicRoutePoints} optimizedRoutePoints={optimizedRoutePoints} />
+      <MapView startPoint={startPoint} setStartPoint={setStartPoint} endPoint={endPoint} setEndPoint={setEndPoint} setStartLocation={setStartLocation} setEndLocation={setEndLocation} basicRoutePoints={basicRoutePoints} optimizedRoutePoints={optimizedRoutePoints} optimizedRouteDistance={optimizedRouteDistance} optimizedRouteTime={optimizedRouteTime} optimizedRouteFuel={optimizedRouteFuel} optimizedRouteAvgSpeed={optimizedRouteAvgSpeed} routeDistance={routeDistance} duration={duration} waveOverlayUrl={waveOverlayUrl} overlayBounds={overlayBounds} />
     </div>
   )
 }

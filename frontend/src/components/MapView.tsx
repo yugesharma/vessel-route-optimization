@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, useMapEvents, CircleMarker, Polyline, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, useMapEvents, CircleMarker, Polyline, useMap, ImageOverlay } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useState, useEffect } from 'react'
 
@@ -25,6 +25,19 @@ type MapViewProps = {
   setEndLocation: (value: string) => void
   basicRoutePoints: [number, number][]
   optimizedRoutePoints: [number, number][]
+  optimizedRouteDistance: number | null
+  optimizedRouteTime: number | null
+  optimizedRouteFuel: number | null
+  optimizedRouteAvgSpeed: number | null
+  routeDistance: number | null
+  duration: number | null
+  waveOverlayUrl: string | null
+  overlayBounds: {
+    north: number
+    south: number
+    east: number
+    west: number
+  } | null
 }
 
 function MapUpdater({
@@ -47,8 +60,9 @@ function MapUpdater({
   return null
 }
 
-function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, setStartLocation, setEndLocation, basicRoutePoints, optimizedRoutePoints }: MapViewProps) {
+function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, setStartLocation, setEndLocation, basicRoutePoints, optimizedRoutePoints, optimizedRouteDistance, optimizedRouteTime, optimizedRouteFuel, optimizedRouteAvgSpeed, routeDistance, duration, waveOverlayUrl, overlayBounds }: MapViewProps) {
   const [selectingStart, setSelectingStart] = useState(true)
+  const [selectedRoute, setSelectedRoute] = useState<'basic' | 'optimized' | null>(null)
   const handleMapClick = (latlng: [number, number]) => {
     if (selectingStart) {
       setStartPoint(latlng)
@@ -60,8 +74,11 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, setStartLoc
       setEndLocation(`${latlng[0].toFixed(4)}, ${latlng[1].toFixed(4)}`)
     }
   }
-  
-  return <MapContainer
+  console.log("Selected route:", selectedRoute)
+
+  return( 
+  <div className="map-wrapper">
+    <MapContainer
     center={[38,-74]}
     zoom={5}
     className="map-container"
@@ -80,15 +97,87 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, setStartLoc
   
   {endPoint && <CircleMarker center={endPoint} radius={5} pathOptions={{ color: 'blue' }} />}
 
-  {basicRoutePoints && basicRoutePoints.length > 0 && (
-  <Polyline positions={basicRoutePoints} pathOptions={{ color: 'blue' }} />
+  {waveOverlayUrl && overlayBounds && (
+  <ImageOverlay
+    url={`http://127.0.0.1:8000${waveOverlayUrl}`}
+    bounds={[
+      [overlayBounds.south, overlayBounds.west],
+      [overlayBounds.north, overlayBounds.east]
+    ]}
+    opacity={0.5}
+  />
 )}
+
+  {basicRoutePoints && basicRoutePoints.length > 0 && (
+  <Polyline positions={basicRoutePoints} pathOptions={{ color: 'blue', weight: selectedRoute === "basic" ? 7 : 3 }} eventHandlers={{
+    mouseover: () => {
+      setSelectedRoute("basic")
+    },
+    mouseout: () => {
+      setSelectedRoute(null)
+    },
+ }}/>
+)}
+
   {optimizedRoutePoints && optimizedRoutePoints.length > 0 && (
-  <Polyline positions={optimizedRoutePoints} pathOptions={{ color: 'green' }} />
+  <Polyline positions={optimizedRoutePoints} pathOptions={{ color: 'green',weight: selectedRoute === "optimized" ? 7 : 3 }} eventHandlers={{
+    mouseover: () => {
+      setSelectedRoute("optimized")
+      console.log("Selected Route: Optimized")
+    },
+    mouseout: () => {
+      setSelectedRoute(null)
+    }
+  }}/>
 )}
 
 </MapContainer>
 
+{selectedRoute && (
+  <div className="route-info-panel">
+  <strong>
+    {selectedRoute === "basic" ? "Basic Route" : "Optimized Route"}
+  </strong>
+
+  {selectedRoute === "basic" && (
+    <div>
+      <div>
+      Distance: {routeDistance?.toFixed(1)} nm
+    </div>
+    <div>
+      {routeDistance !== null && optimizedRouteAvgSpeed != null && (
+        <div>
+          Time: {(routeDistance/optimizedRouteAvgSpeed).toFixed(1)} hours
+          </div>
+      )}
+    </div>
+  <div>
+    Average Speed: {optimizedRouteAvgSpeed?.toFixed(1)} kn
+  </div>
+    </div>
+  )}
+
+  {selectedRoute === "optimized" && (
+    <div>
+      <div>
+      Distance: {optimizedRouteDistance?.toFixed(1)} nm
+    </div>
+    <div>
+      Time: {optimizedRouteTime?.toFixed(1)} hours
+    </div>
+    <div>
+      Fuel: {optimizedRouteFuel?.toFixed(1)} kg
+    </div>
+    <div>
+      Average Speed: {optimizedRouteAvgSpeed?.toFixed(1)} kn
+    </div>
+    </div>
+  )}
+</div>
+)}
+
+</div>
+)
 }
 
 

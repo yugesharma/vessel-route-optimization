@@ -6,6 +6,7 @@ import numpy as np
 import xarray as xr
 from cfgrib.xarray_store import open_datasets
 import matplotlib
+import uuid
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -58,6 +59,20 @@ class EnvironmentDataService:
         return self.validHours[0]
 
     def createWeatherOverlay(self, stepIndex):
+        
+        waveOverlayDir = os.path.join(
+            os.path.dirname(__file__),
+            "data",
+            "waveOverlays"
+            )
+        
+        for old in glob.glob(os.path.join(waveOverlayDir, "wave_*.png")):
+            os.remove(old)
+
+        os.makedirs(waveOverlayDir, exist_ok=True)
+        savePath = os.path.join(waveOverlayDir, f"wave_{stepIndex}_{uuid.uuid4().hex}.png")
+        outPath = "/wave-overlays/"+os.path.basename(savePath)
+
         waveData = self.weatherField["swh"].isel(step=stepIndex)
         north = float(waveData.latitude.values[0])
         south = float(waveData.latitude.values[-1])
@@ -65,22 +80,14 @@ class EnvironmentDataService:
         east = float(waveData.longitude.values[-1])
         print("Wave min:", float(self.weatherField["swh"].min()))
         print("Wave max:", float(self.weatherField["swh"].max()))
-        waveOverlayDir = os.path.join(
-            os.path.dirname(__file__),
-            "data",
-            "waveOverlays"
-            )
-
-        os.makedirs(waveOverlayDir, exist_ok=True)
-
-        outPath = os.path.join(waveOverlayDir, f"wave_{stepIndex}.png")
+       
 
         fig, ax = plt.subplots()
         ax.imshow(waveData.values, cmap="turbo", origin="upper", vmin=0, vmax=3.5)
         ax.axis("off")
 
         fig.savefig(
-            outPath,
+            savePath,
             transparent=True,
             bbox_inches="tight",
             pad_inches=0

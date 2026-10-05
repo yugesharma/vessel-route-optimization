@@ -1,6 +1,6 @@
 # main.py
 
-from fastapi import FastAPI
+import asyncio
 from environmentDataService import getWeatherData
 from RouteCalculation import calculateRoute
 from pydantic import BaseModel
@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 import os
 import requests
 from fastapi.staticfiles import StaticFiles
-
+from fastapi import FastAPI, WebSocket
 app = FastAPI()
 
 waveOverlayDir = os.path.join(os.path.dirname(__file__), "data", "waveOverlays")
@@ -57,19 +57,31 @@ async def geocode(location: str):
     coordinates = geocode_location(location)
     return {"coordinates": coordinates}
 
-@app.post("/route")
-async def calculate_route(request: RouteRequest):
-    # Here we would implement the logic to calculate the optimal route based on the start and ending points 
-    # for now, return a placeholder response
+def runRoute(request: RouteRequest, onProgress=None):
     startPoint = (request.startPoint[1], request.startPoint[0])
     endPoint = (request.endPoint[1], request.endPoint[0])
-    dateTime = request.dateTime
-    distanceWeight = request.distanceWeight
-    windWeight = request.windWeight
-    waveWeight = request.waveWeight
-    fuelTimeWeight = request.fuelTimeWeight
-    basicRoute, optimizedRoute, overlayBounds = calculateRoute(startPoint, endPoint, dateTime, distanceWeight, fuelTimeWeight)
-    return {"basicRoute": basicRoute.baseRoute, "optimizedRoute": optimizedRoute, "waveOverlayUrl": "/wave-overlays/wave_0.png", "overlayBounds": overlayBounds, "message": "Route calculation not implemented yet"}
+    basicRoute, optimizedRoute, overlayPath, overlayBounds = calculateRoute(
+        startPoint, endPoint, request.dateTime, distanceWeight=request.distanceWeight,
+        fuelTimeWeight=request.fuelTimeWeight, onProgress=onProgress)
+    return {"basicRoute": basicRoute.baseRoute, "optimizedRoute": optimizedRoute, "waveOverlayUrl": overlayPath, "overlayBounds": overlayBounds}
+
+@app.post("/route")
+async def calculate_route(request: RouteRequest):
+    return runRoute(request)
+
+@app.websocket("/ws/route")
+async def route_websocket(websocket: WebSocket):
+    await websocket.accept()
+    request = RouteRequest(**await websocket.receive_json())
+    loop = asyncio.get_running_loop()
+
+    # A* runs in a worker thread
+    def onProgress(snapshot):
+        asyncio.run_coroutine_threadsafe(websocket.send_json({"type": "progress", **snapshot}), loop).result()
+
+    result = await asyncio.to_thread(runRoute, request, onProgress)
+    await websocket.send_json({"type": "result", **result})
+    await websocket.close()
 
 @app.get("/")
 async def root():

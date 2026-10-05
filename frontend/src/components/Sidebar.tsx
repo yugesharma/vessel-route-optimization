@@ -20,11 +20,12 @@ type SidebarProps = {
   setDateTime: (value: string) => void
   routeDistance: number | null
   duration: number | null
+  generating: boolean
 }
 
 
 
-function Sidebar({distanceWeight, setDistanceWeight, windWeight, setWindWeight, waveWeight, setWaveWeight, fuelTimeWeight, setFuelTimeWeight, startLocation, endLocation, setStartLocation, setEndLocation, handleStartLocationSearch, handleEndLocationSearch, generateRoute, dateTime, setDateTime}: SidebarProps) {
+function Sidebar({distanceWeight, setDistanceWeight, windWeight, setWindWeight, waveWeight, setWaveWeight, fuelTimeWeight, setFuelTimeWeight, startLocation, endLocation, setStartLocation, setEndLocation, handleStartLocationSearch, handleEndLocationSearch, generateRoute, dateTime, setDateTime, generating}: SidebarProps) {
 
   return (
     <div className="sidebar">
@@ -80,7 +81,7 @@ function Sidebar({distanceWeight, setDistanceWeight, windWeight, setWindWeight, 
         <input type="range" id="waveWeight" name="waveWeight" min="0" max="1" step="0.1" value={waveWeight} onChange={(e) => setWaveWeight(Number(e.target.value))} />
       </div>
       
-      <button onClick={generateRoute}>Calculate Route</button>
+      <button onClick={generateRoute} disabled={generating}>{generating ? 'Calculating...' : 'Calculate Route'}</button>
     </div>
   )
 }

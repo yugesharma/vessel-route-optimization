@@ -1,16 +1,20 @@
 import { MapContainer, TileLayer, useMapEvents, CircleMarker, Polyline, useMap, ImageOverlay } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 type MapClickHandlerProps = {
   onMapClick: (latlng: [number, number]) => void
+  onHover: (latlng: [number, number]) => void
 }
 
-function MapClickHandler({onMapClick}: MapClickHandlerProps) {
+function MapClickHandler({onMapClick, onHover}: MapClickHandlerProps) {
   useMapEvents({
     click: (e) => {
       onMapClick([e.latlng.lat, e.latlng.lng])
-}
+    },
+    mousemove: (e) => {
+      onHover([e.latlng.lat, e.latlng.lng])
+    }
   })
 
   return null
@@ -38,6 +42,8 @@ type MapViewProps = {
     east: number
     west: number
   } | null
+  exploredNodes: [number, number][]
+  frontierNodes: [number, number][]
 }
 
 function MapUpdater({
@@ -60,9 +66,14 @@ function MapUpdater({
   return null
 }
 
-function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, setStartLocation, setEndLocation, basicRoutePoints, optimizedRoutePoints, optimizedRouteDistance, optimizedRouteTime, optimizedRouteFuel, optimizedRouteAvgSpeed, routeDistance, duration, waveOverlayUrl, overlayBounds }: MapViewProps) {
+function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, 
+  setStartLocation, setEndLocation, basicRoutePoints, optimizedRoutePoints,
+  optimizedRouteDistance, optimizedRouteTime, optimizedRouteFuel, optimizedRouteAvgSpeed,
+  routeDistance, duration, waveOverlayUrl, overlayBounds, exploredNodes, frontierNodes }: MapViewProps) {
   const [selectingStart, setSelectingStart] = useState(true)
   const [selectedRoute, setSelectedRoute] = useState<'basic' | 'optimized' | null>(null)
+  const hoverRef = useRef<HTMLDivElement>(null)
+  
   const handleMapClick = (latlng: [number, number]) => {
     if (selectingStart) {
       setStartPoint(latlng)
@@ -76,12 +87,18 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, setStartLoc
   }
   console.log("Selected route:", selectedRoute)
 
+  const handleHover = (latlng: [number, number]) => {
+    if (hoverRef.current) {
+      hoverRef.current.textContent = `${latlng[0].toFixed(4)}, ${latlng[1].toFixed(4)}`
+    }
+  }
   return( 
   <div className="map-wrapper">
     <MapContainer
     center={[38,-74]}
     zoom={5}
     className="map-container"
+    preferCanvas={true}
 >
   <TileLayer
     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -91,7 +108,13 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, setStartLoc
 
   <MapUpdater startPoint={startPoint} endPoint={endPoint} />
   
-  <MapClickHandler onMapClick={handleMapClick} />
+  <MapClickHandler onMapClick={handleMapClick} onHover={handleHover} />
+
+  {exploredNodes && exploredNodes.length > 0 && (
+    exploredNodes.map((node,i) => (
+      <CircleMarker key={i} center={node} radius={0.5} pathOptions={{ color: 'yellow' }} />
+    ))
+  )}
   
   {startPoint && <CircleMarker center={startPoint} radius={5} pathOptions={{ color: 'red' }} />}
   
@@ -119,6 +142,14 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, setStartLoc
  }}/>
 )}
 
+
+  {/* {frontierNodes && frontierNodes.length > 0 && (
+    frontierNodes.map((node) => (
+      <CircleMarker key={node[0] + ',' + node[1]} center={node} radius={0.5} pathOptions={{ color: 'red' }} />
+    ))
+  )} */}
+
+
   {optimizedRoutePoints && optimizedRoutePoints.length > 0 && (
   <Polyline positions={optimizedRoutePoints} pathOptions={{ color: 'green',weight: selectedRoute === "optimized" ? 7 : 3 }} eventHandlers={{
     mouseover: () => {
@@ -130,6 +161,8 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, setStartLoc
     }
   }}/>
 )}
+
+ 
 
 </MapContainer>
 
@@ -175,6 +208,8 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, setStartLoc
   )}
 </div>
 )}
+
+<div ref={hoverRef} className="hover-info-panel" />
 
 </div>
 )

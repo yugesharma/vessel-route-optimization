@@ -8,10 +8,11 @@ from pyproj import Geod
 from math import floor
 import heapq
 import numpy as np
+import time
 
 geod = Geod(ellps="WGS84")
 
-def setup(startPoint, endPoint,dateTime,speeds,distanceWeight,fuelTimeWeight,timeBinSize):
+def setup(startPoint, endPoint,dateTime,speeds,distanceWeight,fuelTimeWeight,timeBinSize,priceFuel,priceTime):
     route = Route(startPoint, endPoint)
     route.getBaseRoute()
     
@@ -42,11 +43,9 @@ def setup(startPoint, endPoint,dateTime,speeds,distanceWeight,fuelTimeWeight,tim
 
     t0=(np.datetime64(dateTime) - environmentDataService.getCycleStart()) / np.timedelta64(1, "h")
 
-    costMin=float('inf')
-    for speed in speeds:
-        fuelPerNM = vsl.calmWaterFuelPerNM(speed)
-        costPerNM=distanceWeight+fuelTimeWeight*fuelPerNM+(1-fuelTimeWeight)/speed
-        costMin=min(costMin,costPerNM)
+    # cheapest possible cost per nm: calm water (legFuel never goes below it), same formula as edgeCost
+    costMin=min(legCost(1, vsl.calmWaterFuelPerNM(speed), 1/speed, distanceWeight, fuelTimeWeight, priceFuel, priceTime)
+                for speed in speeds)
 
 
     print('start wave height:', startWeather["Hs"])
@@ -57,18 +56,29 @@ def setup(startPoint, endPoint,dateTime,speeds,distanceWeight,fuelTimeWeight,tim
     # print(geographicDataService.seaMask)
     # print("Valid nodes:", len(navGrid.validNodes))
 
-    return route, navGrid, environmentDataService, startNode, endNode, t0, costMin, overlayBounds
 
-def calculateRoute(startPoint, endPoint, dateTime, distanceWeight=1.0, fuelTimeWeight=0.5):
+    return route, navGrid, environmentDataService, startNode, endNode, t0, costMin, overlayPath, overlayBounds
+
+# default prices: VLSFO ~600 $/t, VLCC time charter ~40k $/day (~1700 $/h)
+def calculateRoute(startPoint, endPoint, dateTime, distanceWeight=1.0, fuelTimeWeight=0.5, priceFuel=600.0, priceTime=1700.0, onProgress=None):
     speeds=[6,8,10,12,14]
     timeBinSize=3
-    route, navGrid, environmentDataService, startNode, endNode, t0, costMin, overlayBounds = setup(
-        startPoint, endPoint, dateTime, speeds, distanceWeight, fuelTimeWeight, timeBinSize)
+    start_time = time.time()
+    route, navGrid, environmentDataService, startNode, endNode, t0, costMin, overlayPath, overlayBounds = setup(
+        startPoint, endPoint, dateTime, speeds, distanceWeight=distanceWeight, fuelTimeWeight=fuelTimeWeight,
+        timeBinSize=timeBinSize, priceFuel=priceFuel, priceTime=priceTime)
+    end_time = time.time()
+    print(f"Time taken to setup: {end_time - start_time} seconds")
+
+    start_time = time.time()
     goalKey, g, parents = aStar(startNode, endNode, t0, vsl, speeds, navGrid, environmentDataService,
-                                costMin, timeBinSize, distanceWeight, fuelTimeWeight)
+                                costMin, timeBinSize, distanceWeight=distanceWeight, fuelTimeWeight=fuelTimeWeight,
+                                priceFuel=priceFuel, priceTime=priceTime, onProgress=onProgress)
+    end_time = time.time()
+    print(f"Time taken to calculate route: {end_time - start_time} seconds")
     if goalKey is None:
-        return route, None, overlayBounds
-    return route, reconstructPath(parents, goalKey, navGrid, t0), overlayBounds
+        return route, None, overlayPath, overlayBounds
+    return route, reconstructPath(parents, goalKey, navGrid, t0), overlayPath, overlayBounds
 
 
 def neighbors(node, departureTime,navGrid,speeds):
@@ -96,14 +106,17 @@ def neighbors(node, departureTime,navGrid,speeds):
 
     return legalMoves
 
-def edgeCost(node,move,departureTime,vsl,environmentDataService,distanceWeight=1.0,fuelTimeWeight=0.5):
+def legCost(distanceNm, fuelKg, timeH, distanceWeight, fuelTimeWeight, priceFuel, priceTime):
+    # priceFuel in $/tonne, priceTime in $/hour; shared by edgeCost and the heuristic so they can't drift apart
+    return distanceWeight*distanceNm + fuelTimeWeight*fuelKg/1000*priceFuel + (1-fuelTimeWeight)*timeH*priceTime
+
+def edgeCost(node,move,departureTime,vsl,environmentDataService,distanceWeight,fuelTimeWeight,priceFuel,priceTime):
     neighbor,speed,heading,distance,timeH,arrivalTime=move
     weather=environmentDataService.weatherAt(node,departureTime)
     fuel=vsl.legFuel(speed,heading,timeH,weather)
     if fuel is None:
         return None  # speed not achievable in this weather (needs more than MCR)
-    cost=distanceWeight*distance+fuelTimeWeight*fuel+(1-fuelTimeWeight)*timeH
-    return cost,fuel
+    return legCost(distance, fuel, timeH, distanceWeight, fuelTimeWeight, priceFuel, priceTime),fuel
 
 def timeBin(t0, t, binSize):
     return floor((t-t0)/binSize)
@@ -115,7 +128,7 @@ def heuristic(node,goal,navGrid,costMin):
     distanceNm = distanceM / 1852
     return distanceNm*costMin
 
-def aStar(start,goal,t0,vsl,speeds,navGrid,environmentDataService,costMin,timeBinSize,distanceWeight=1.0,fuelTimeWeight=0.5):
+def aStar(start,goal,t0,vsl,speeds,navGrid,environmentDataService,costMin,timeBinSize,distanceWeight,fuelTimeWeight,priceFuel,priceTime,onProgress=None):
     bestCost={}
     bestCost[(start,0)]=0
     parents={}
@@ -125,8 +138,23 @@ def aStar(start,goal,t0,vsl,speeds,navGrid,environmentDataService,costMin,timeBi
     f=g+h
     openList=[(f,0,g,h,start,t0)]
     heapq.heapify(openList)
+    exploredNodes=[]
+    sentCells=set()  
+    expanded=0
+    webSocketFrequency = 5
+
     while openList:
         f,counter,g,h,currentNode,depTime = heapq.heappop(openList)
+        if currentNode not in sentCells:
+            sentCells.add(currentNode)
+            exploredNodes.append([float(c) for c in navGrid.nodeToCoordinates(currentNode)])
+        expanded+=1
+        if expanded%1000==0 and webSocketFrequency < 100:
+            webSocketFrequency = webSocketFrequency * 2
+        if onProgress and exploredNodes and expanded % webSocketFrequency == 0:
+            onProgress({"exploredNodes": exploredNodes,
+                        })
+            exploredNodes=[]
         currKey=(currentNode,timeBin(t0,depTime,timeBinSize))
 
         if currKey in bestCost and g > bestCost[currKey]:
@@ -137,7 +165,8 @@ def aStar(start,goal,t0,vsl,speeds,navGrid,environmentDataService,costMin,timeBi
         moves=neighbors(currentNode,depTime,navGrid,speeds)
         for move in moves:
             nextNode,speed,heading,distance,timeH,arrivalTime=move
-            result = edgeCost(currentNode,move,depTime,vsl,environmentDataService,distanceWeight,fuelTimeWeight)
+            result = edgeCost(currentNode,move,depTime,vsl,environmentDataService,distanceWeight=distanceWeight,
+                              fuelTimeWeight=fuelTimeWeight,priceFuel=priceFuel,priceTime=priceTime)
             if result is None:
                 continue
             cost,fuel=result

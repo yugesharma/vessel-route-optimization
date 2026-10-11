@@ -2,6 +2,7 @@ import { MapContainer, TileLayer, useMapEvents, CircleMarker, Polyline, useMap, 
 import 'leaflet/dist/leaflet.css'
 import { useState, useEffect, useRef } from 'react'
 import WeatherSlider from './WeatherSlider'
+import { Waves } from 'lucide-react'
 
 type MapClickHandlerProps = {
   onMapClick: (latlng: [number, number]) => void
@@ -70,11 +71,8 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint,
   const [selectingStart, setSelectingStart] = useState(true)
   const [selectedRoute, setSelectedRoute] = useState<'basic' | 'optimized' | null>(null)
   const hoverRef = useRef<HTMLDivElement>(null)
-  const [selectedOverlayHour, setSelectedOverlayHour] = useState<number | null>(0)
-  const handleOverlayHourClick = (hour: number) => {
-    setSelectedOverlayHour(hour)
-    console.log("Selected overlay hour:", hour)
-  }
+  const [selectedOverlayHour, setSelectedOverlayHour] = useState<number>(0)
+  const [showWaveOverlay, setShowWaveOverlay] = useState(true)
 
   const handleMapClick = (latlng: [number, number]) => {
     if (selectingStart) {
@@ -122,13 +120,10 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint,
   
   {endPoint && <CircleMarker center={endPoint} radius={5} pathOptions={{ color: 'blue' }} />}
 
-  {overlayReady && (
-  <ImageOverlay
-    url={`http://localhost:8000/waveOverlays/${overlayDate}/${selectedOverlayHour}.png`}
-    bounds={[
-      [-90, -180],
-      [90, 180]
-    ]}
+  {showWaveOverlay && overlayReady && overlayHours && (
+  <ImageOverlay 
+    url={`/wave-overlays/${overlayDate}/${overlayHours[selectedOverlayHour]}.png`}
+    bounds={[[-85.0511, -180.125], [85.0511, 179.875]]}
     opacity={0.5}
   />
 )}
@@ -210,9 +205,16 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint,
 )}
 
 <div ref={hoverRef} className="hover-info-panel" />
-<div className='weather-slider-container'>
+<button
+  className={`wave-toggle ${showWaveOverlay ? 'active' : ''}`}
+  onClick={() => setShowWaveOverlay(!showWaveOverlay)}
+  aria-label="Toggle wave overlay"
+  aria-pressed={showWaveOverlay}
+  title="Toggle wave overlay"
+>
+  <Waves size={20} strokeWidth={1.75} />
+</button>
   <WeatherSlider overlayReady={overlayReady} overlayDate={overlayDate} overlayHours={overlayHours} selectedOverlayHour={selectedOverlayHour} setSelectedOverlayHour={setSelectedOverlayHour}/>
-</div>
 </div>
 );
 }

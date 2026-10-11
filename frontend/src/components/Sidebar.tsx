@@ -39,7 +39,7 @@ function Sidebar({distanceWeight, setDistanceWeight, windWeight, setWindWeight, 
       <input type="text" id="end" name="end" placeholder="Enter end location" value={endLocation} onChange={(e) => setEndLocation(e.target.value)} onKeyDown={(e) => {if (e.key === 'Enter') { handleEndLocationSearch() }}} />
       </div>
       <div className="form-group">
-        <label htmlFor="dateTime">Date/Time:</label>
+        <label htmlFor="dateTime">Date/Time(UTC):</label>
         <input type="datetime-local" id="dateTime" name="dateTime" value={dateTime} onChange={(e) => setDateTime(e.target.value)} />
       </div>
 

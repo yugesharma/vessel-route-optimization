@@ -1,7 +1,7 @@
 # main.py
 
 import asyncio
-from environmentDataService import getWeatherData, DATE_STRING, FORECAST_HOURS
+from environmentDataService import getWeatherData, DATE_STRING, FORECAST_HOURS, VALID_HOURS
 from RouteCalculation import calculateOptimizedRoute, getBaseRoute
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,9 +19,10 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-waveOverlayDir = os.path.join(os.path.dirname(__file__), "data", "waveOverlays", DATE_STRING)
-os.makedirs(waveOverlayDir, exist_ok=True)   
-app.mount("/wave-overlays", StaticFiles(directory=waveOverlayDir), name="wave-overlays")
+baseOverlayDir = os.path.join(os.path.dirname(__file__), "data", "waveOverlays")
+waveOverlayDir = os.path.join(baseOverlayDir, DATE_STRING)
+os.makedirs(waveOverlayDir, exist_ok=True)
+app.mount("/wave-overlays", StaticFiles(directory=baseOverlayDir), name="wave-overlays")
 
 load_dotenv()
 geoapify_api_key = os.getenv("GEOAPIFY_API_KEY")
@@ -101,4 +102,4 @@ async def route_websocket(websocket: WebSocket):
 @app.get("/overlays")
 def overlays():
     done=os.path.join(waveOverlayDir, "done")
-    return {"done": os.path.exists(done), "date": DATE_STRING, "hours": FORECAST_HOURS}
+    return {"done": os.path.exists(done), "date": DATE_STRING, "hours": VALID_HOURS}

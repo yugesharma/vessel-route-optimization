@@ -36,7 +36,6 @@ function App() {
         const response = await getOverlayInfo()
         if (response.status === 200) {
           const data = response.data
-          console.log('Overlay info:', data)
           if (data.done) {
             setOverlayReady(true)
             setOverlayDate(data.date)
@@ -117,8 +116,8 @@ function App() {
   }
 
   const generateRoute = () => {
-    if(!startPoint || !endPoint){
-      alert('Please select start and end points')
+    if(!startPoint || !endPoint || !dateTime){
+      alert('Please select start, end points and date time')
       return
     }
     setGenerating(true)

@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 
 DATE_STRING = date.today().strftime("%Y%m%d")
 FORECAST_HOURS = list(range(0, 7 * 24 + 1, 3))  
+VALID_HOURS=[]
 
 class EnvironmentDataService:
     def __init__(self):
@@ -129,6 +130,7 @@ def combineWeatherForecast(step_files: list[str], weather_dir: str) -> str:
     for ds in datasets:
         ds.close()
     combined.close()
+
     return out_path
 
 def createWeatherOverlay(weatherDir):
@@ -139,6 +141,10 @@ def createWeatherOverlay(weatherDir):
             "data","waveOverlays", DATE_STRING)
         done = os.path.join(waveOverlayDir, "done")
 
+        for i,h in enumerate(FORECAST_HOURS):
+            valid_time=globalWeather["valid_time"].isel(step=i).values
+            VALID_HOURS.append(np.datetime_as_string(valid_time, unit='s')+"Z")
+
         if os.path.exists(done):
             print("Wave overlays already created")
             return done
@@ -147,14 +153,16 @@ def createWeatherOverlay(weatherDir):
         for dirs in os.listdir(parent):
             if re.search(r'\d{8}', dirs) and dirs < DATE_STRING:
                     shutil.rmtree(os.path.join(parent, dirs))
-                     
-        for i,h in enumerate(FORECAST_HOURS):
-            plt.imsave(os.path.join(waveOverlayDir, f"{h}.png"),globalWeather["swh"].isel(step=i).values, cmap="turbo", vmin=0, vmax=10)
+        
+        y = np.linspace(np.pi, -np.pi, 1440)
+        mercLats = np.degrees(2 * np.arctan(np.exp(y)) - np.pi / 2)
+        
+        for i in range(len(VALID_HOURS)):
+            plt.imsave(os.path.join(waveOverlayDir, f"{VALID_HOURS[i]}.png"),globalWeather["swh"].isel(step=i).sel(latitude=mercLats, method="nearest").values, cmap="turbo", vmin=0, vmax=10)
         open(done, "w").close()
         
         print("Wave overlays created successfully")
         return done
-
 
 def getWeatherForecast(weather_dir: str) -> str:
         with _forecastLock:
@@ -176,6 +184,15 @@ def getWeatherData():
     getWeatherForecast(weather_dir)
     createWeatherOverlay(weather_dir)
 
+    if os.path.exists(os.path.join(weather_dir, "steps_" + DATE_STRING)):
+        for file in os.listdir(weather_dir):
+            dataDate=re.search(r'\d{8}', file).group(0)
+            if dataDate and dataDate < DATE_STRING:
+                if os.path.isdir(os.path.join(weather_dir, file)):
+                    shutil.rmtree(os.path.join(weather_dir, file))
+                else:
+                    os.remove(os.path.join(weather_dir, file))
+                
 def cropWeather (globalWeather,bbox):
     croppedWeather = globalWeather.sel(
     latitude=slice(bbox["toplat"], bbox["bottomlat"]),

@@ -89,8 +89,21 @@
 
 .hover-info-panel {
   position: absolute;
-  bottom: 1px;
+  bottom: 0px;
   left: 0px;
+  z-index: 1000;
+  background: white;
+  padding: 5px;
+  font-size: 12px;
+}
+
+.weather-slider-container {
+  position: absolute;
+  width: 90%;
+  height: 20%;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 1000;
   background: white;
   padding: 5px;

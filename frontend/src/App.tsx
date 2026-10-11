@@ -1,7 +1,8 @@
 import './App.css'
 import MapView from './components/MapView'
 import Sidebar from './components/Sidebar'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { getBaseRoute, getOverlayInfo } from './api'
 
 function App() {
   const [startPoint, setStartPoint] = useState<[number, number] | null>(null)
@@ -21,23 +22,52 @@ function App() {
   const [optimizedRouteTime, setOptimizedRouteTime] = useState<number | null>(null)
   const [optimizedRouteFuel, setOptimizedRouteFuel] = useState<number | null>(null)
   const [optimizedRouteAvgSpeed, setOptimizedRouteAvgSpeed] = useState<number | null>(null)
-  const [waveOverlayUrl, setWaveOverlayUrl] = useState<string | null>(null)
-  const [overlayBounds, setOverlayBounds] = useState<{
-    north: number
-    south: number
-    east: number
-    west: number
-  } | null>(null)
+
   const [exploredNodes, setExploredNodes] = useState<[number, number][]>([])
   const [frontierNodes, setFrontierNodes] = useState<[number, number][]>([])
   const [generating, setGenerating] = useState(false)
+  const [overlayReady, setOverlayReady] = useState(false)
+  const [overlayDate, setOverlayDate] = useState<string | null>(null)
+  const [overlayHours, setOverlayHours] = useState<number[] | null>(null)
+
+  useEffect(() => {
+    const fetchOverlayInfo = async () => {
+      try {
+        const response = await getOverlayInfo()
+        if (response.status === 200) {
+          const data = response.data
+          console.log('Overlay info:', data)
+          if (data.done) {
+            setOverlayReady(true)
+            setOverlayDate(data.date)
+            setOverlayHours(data.hours)
+            clearInterval(interval)
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching overlay info:', error)
+      }
+    }
+    const interval = setInterval(fetchOverlayInfo, 2000)    
+    return () => clearInterval(interval)
+  }, [])
+
+  const fetchBaseRoute = async (startPoint: [number, number], endPoint: [number, number]) => {
+    console.log(startPoint, endPoint)
+    const response = await getBaseRoute(startPoint, endPoint)
+    if (response.status === 200) {
+      const data = response.data
+      const points = data.baseRoute.geometry.coordinates.map(
+        (point: [number, number]) => [point[1], point[0]] as [number, number])
+      setBasicRoutePoints(points)
+      setRouteDistance(data.baseRoute.properties.length)
+      setDuration(data.baseRoute.properties.duration_hours)
+    }
+  }
 
   const handleMessage = (message: MessageEvent) => {
     const data=JSON.parse(message.data)
       if(data.type==='result'){
-        const points = data.basicRoute.geometry.coordinates.map(
-          (point: [number, number]) => [point[1], point[0]] as [number, number])
-          setBasicRoutePoints(points)
         
         const legs = data.optimizedRoute ?? []
 
@@ -60,11 +90,7 @@ function App() {
           (leg: any) => [leg.lat, leg.lon] as [number, number])
         
         setOptimizedRoutePoints(optimizedPoints)
-        setRouteDistance(data.basicRoute.properties.length)
         setDuration(data.basicRoute.properties.duration_hours)
-        setWaveOverlayUrl(data.waveOverlayUrl)
-        setOverlayBounds(data.overlayBounds)
-
       }
       else if(data.type === 'progress') {
         
@@ -95,9 +121,8 @@ function App() {
       alert('Please select start and end points')
       return
     }
-    setWaveOverlayUrl(null)
-    setOverlayBounds(null)
     setGenerating(true)
+    fetchBaseRoute(startPoint, endPoint)
     const ws = new WebSocket('ws://localhost:8000/ws/route')
     ws.onopen = () => {
       ws.send(JSON.stringify({ startPoint, endPoint, dateTime, distanceWeight, windWeight, waveWeight, fuelTimeWeight }))
@@ -114,7 +139,7 @@ function App() {
   return (
     <div className="app-layout">
       <Sidebar startPoint={startPoint} startLocation={startLocation} setStartLocation={setStartLocation} endPoint={endPoint} endLocation={endLocation} setEndLocation={setEndLocation} setDateTime={setDateTime} dateTime={dateTime} distanceWeight={distanceWeight} setDistanceWeight={setDistanceWeight} windWeight={windWeight} setWindWeight={setWindWeight} waveWeight={waveWeight} setWaveWeight={setWaveWeight} handleStartLocationSearch={handleStartLocationChange} handleEndLocationSearch={handleEndLocationChange} generateRoute={generateRoute} routeDistance={routeDistance} duration={duration} fuelTimeWeight={fuelTimeWeight} setFuelTimeWeight={setFuelTimeWeight} generating={generating}/>
-      <MapView startPoint={startPoint} setStartPoint={setStartPoint} endPoint={endPoint} setEndPoint={setEndPoint} setStartLocation={setStartLocation} setEndLocation={setEndLocation} basicRoutePoints={basicRoutePoints} optimizedRoutePoints={optimizedRoutePoints} optimizedRouteDistance={optimizedRouteDistance} optimizedRouteTime={optimizedRouteTime} optimizedRouteFuel={optimizedRouteFuel} optimizedRouteAvgSpeed={optimizedRouteAvgSpeed} routeDistance={routeDistance} duration={duration} waveOverlayUrl={waveOverlayUrl} overlayBounds={overlayBounds} exploredNodes={exploredNodes} frontierNodes={frontierNodes} />
+      <MapView startPoint={startPoint} setStartPoint={setStartPoint} endPoint={endPoint} setEndPoint={setEndPoint} setStartLocation={setStartLocation} setEndLocation={setEndLocation} basicRoutePoints={basicRoutePoints} optimizedRoutePoints={optimizedRoutePoints} optimizedRouteDistance={optimizedRouteDistance} optimizedRouteTime={optimizedRouteTime} optimizedRouteFuel={optimizedRouteFuel} optimizedRouteAvgSpeed={optimizedRouteAvgSpeed} routeDistance={routeDistance} duration={duration} overlayReady={overlayReady} overlayDate={overlayDate} overlayHours={overlayHours} exploredNodes={exploredNodes} frontierNodes={frontierNodes} />
     </div>
   )
 }

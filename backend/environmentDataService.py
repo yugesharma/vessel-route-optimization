@@ -6,8 +6,10 @@ import numpy as np
 import xarray as xr
 from cfgrib.xarray_store import open_datasets
 import matplotlib
-import uuid
-
+import re
+import shutil
+import threading
+_forecastLock=threading.Lock()
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -43,8 +45,6 @@ class EnvironmentDataService:
         self.stepHours = croppedWeather.step.values / np.timedelta64(1, "h")
         self.arrays = {v: croppedWeather[v].values for v in ("swh", "perpw", "dirpw", "ws", "wdir")}
 
-       
-
         return self.weatherField, self.validHours
     
     def weatherAt(self, node, t):
@@ -57,61 +57,6 @@ class EnvironmentDataService:
 
     def getCycleStart(self):
         return self.validHours[0]
-
-    def createWeatherOverlay(self, stepIndex):
-        
-        waveOverlayDir = os.path.join(
-            os.path.dirname(__file__),
-            "data",
-            "waveOverlays"
-            )
-        
-        for old in glob.glob(os.path.join(waveOverlayDir, "wave_*.png")):
-            os.remove(old)
-
-        os.makedirs(waveOverlayDir, exist_ok=True)
-        savePath = os.path.join(waveOverlayDir, f"wave_{stepIndex}_{uuid.uuid4().hex}.png")
-        outPath = "/wave-overlays/"+os.path.basename(savePath)
-
-        waveData = self.weatherField["swh"].isel(step=stepIndex)
-        north = float(waveData.latitude.values[0])
-        south = float(waveData.latitude.values[-1])
-        west = float(waveData.longitude.values[0])
-        east = float(waveData.longitude.values[-1])
-        print("Wave min:", float(self.weatherField["swh"].min()))
-        print("Wave max:", float(self.weatherField["swh"].max()))
-       
-
-        fig, ax = plt.subplots()
-        ax.imshow(waveData.values, cmap="turbo", origin="upper", vmin=0, vmax=3.5)
-        ax.axis("off")
-
-        fig.savefig(
-            savePath,
-            transparent=True,
-            bbox_inches="tight",
-            pad_inches=0
-        )
-
-        plt.close(fig)
-
-        return outPath, {"north": north, "south": south, "west": west, "east": east}
-    
-
-
-def downloadWaveData():
-    url = (
-        "https://nomads.ncep.noaa.gov/cgi-bin/filter_gefs_wave_0p25.pl"
-        f"?dir=%2Fgefs.{DATE_STRING}%2F00%2Fwave%2Fgridded"
-        "&file=gefs.wave.t00z.c00.global.0p25.f000.grib2"
-        "&var_HTSGW=on&lev_surface=on"
-    )
-    response = requests.get(url, timeout=120)
-    if response.status_code != 200 or not response.content.startswith(b"GRIB"):
-        raise RuntimeError(f"Failed to download wave data: HTTP {response.status_code}")
-    print("Wave data downloaded successfully")
-    return response
-
 
 def downloadWeatherData(weather_dir: str) -> list[str]:
     steps_dir = os.path.join(weather_dir, f"steps_{DATE_STRING}")
@@ -186,39 +131,38 @@ def combineWeatherForecast(step_files: list[str], weather_dir: str) -> str:
     combined.close()
     return out_path
 
+def createWeatherOverlay(weatherDir):
+
+        globalWeather = xr.open_dataset(os.path.join(weatherDir, f"weather_{DATE_STRING}_7day.nc"))
+        waveOverlayDir = os.path.join(
+            os.path.dirname(__file__),
+            "data","waveOverlays", DATE_STRING)
+        done = os.path.join(waveOverlayDir, "done")
+
+        if os.path.exists(done):
+            print("Wave overlays already created")
+            return done
+        
+        parent=os.path.dirname(waveOverlayDir)
+        for dirs in os.listdir(parent):
+            if re.search(r'\d{8}', dirs) and dirs < DATE_STRING:
+                    shutil.rmtree(os.path.join(parent, dirs))
+                     
+        for i,h in enumerate(FORECAST_HOURS):
+            plt.imsave(os.path.join(waveOverlayDir, f"{h}.png"),globalWeather["swh"].isel(step=i).values, cmap="turbo", vmin=0, vmax=10)
+        open(done, "w").close()
+        
+        print("Wave overlays created successfully")
+        return done
+
 
 def getWeatherForecast(weather_dir: str) -> str:
-    out_path = os.path.join(weather_dir, f"weather_{DATE_STRING}_7day.nc")
-    if os.path.exists(out_path):
-        print(f"Weather forecast already exists for {DATE_STRING}")
-        return out_path
-    return combineWeatherForecast(downloadWeatherData(weather_dir), weather_dir)
-
-
-def convertGribToPng(gribFile):
-    for stale in glob.glob(f"{gribFile}.*.idx"):
-        os.remove(stale)
-    ds = xr.open_dataset(gribFile, engine="cfgrib")
-    data = ds["swh"]
-
-    wavepngsDir = os.path.join(os.path.dirname(__file__), "data", "wavepngs")
-    os.makedirs(wavepngsDir, exist_ok=True)
-    out_path = os.path.join(wavepngsDir, f"wave_{DATE_STRING}.png")
-
-    fig, ax = plt.subplots(figsize=(12, 6))
-    mesh = ax.pcolormesh(
-        data.longitude, data.latitude, data.values, cmap="turbo", shading="auto"
-    )
-    fig.colorbar(mesh, ax=ax, label="swh (m)")
-    ax.set_title(f"Significant Wave Height - {DATE_STRING}")
-    ax.set_xlabel("Longitude")
-    ax.set_ylabel("Latitude")
-    fig.savefig(out_path, dpi=150, bbox_inches="tight")
-    plt.close(fig)
-    ds.close()
-    print(f"Wave map saved to {out_path}")
-    return out_path
-
+        with _forecastLock:
+            out_path = os.path.join(weather_dir, f"weather_{DATE_STRING}_7day.nc")
+            if os.path.exists(out_path):
+                print(f"Weather forecast already exists for {DATE_STRING}")
+                return out_path
+            return combineWeatherForecast(downloadWeatherData(weather_dir), weather_dir)
 
 def getWeatherData():
     data_dir = os.path.join(os.path.dirname(__file__), "data")
@@ -229,14 +173,8 @@ def getWeatherData():
     for d in (data_dir, weather_dir, wave_dir, wavepngs_dir):
         os.makedirs(d, exist_ok=True)
 
-    wave_grib = os.path.join(wave_dir, f"wave_{DATE_STRING}.grib2")
-    wave_png = os.path.join(wavepngs_dir, f"wave_{DATE_STRING}.png")
-    if not os.path.exists(wave_grib) or not os.path.exists(wave_png):
-        convertGribToPng(saveData(downloadWaveData(), "wave", wave_dir))
-    else:
-        print(f"Wave data already exists for {DATE_STRING}")
-
     getWeatherForecast(weather_dir)
+    createWeatherOverlay(weather_dir)
 
 def cropWeather (globalWeather,bbox):
     croppedWeather = globalWeather.sel(
@@ -245,7 +183,6 @@ def cropWeather (globalWeather,bbox):
 )
     
     return croppedWeather
-
 
 if __name__ == "__main__":
     getWeatherData()

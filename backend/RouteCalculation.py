@@ -12,12 +12,14 @@ import time
 
 geod = Geod(ellps="WGS84")
 
-def setup(startPoint, endPoint,dateTime,speeds,distanceWeight,fuelTimeWeight,timeBinSize,priceFuel,priceTime):
+def getBaseRoute(startPoint, endPoint):
     route = Route(startPoint, endPoint)
     route.getBaseRoute()
-    
+    return route.baseRoute
+
+def setup(baseRoute,startPoint, endPoint,dateTime,speeds,distanceWeight,fuelTimeWeight,timeBinSize,priceFuel,priceTime):
     navGrid = NavGrid()
-    navGrid.buildCorridor(route.baseRoute)
+    navGrid.buildCorridor(baseRoute)
     bbox = navGrid.getCorridorBoundingBox()
 
     # cropped weather data for the route corridor
@@ -27,10 +29,7 @@ def setup(startPoint, endPoint,dateTime,speeds,distanceWeight,fuelTimeWeight,tim
     # cropped land/water mask for the route corridor
     geographicDataService = GeographicDataService()
     geographicDataService.getSeaMask(bbox)
-    overlayPath, overlayBounds = environmentDataService.createWeatherOverlay(0)
     
-    print("Overlay bounds:", overlayBounds)
-
 
     # build valid navigation grid: nodes inside the corridor, over sea, with wave data
     navGrid.buildGrid(geographicDataService.seaMask, environmentDataService.weatherField)
@@ -57,15 +56,15 @@ def setup(startPoint, endPoint,dateTime,speeds,distanceWeight,fuelTimeWeight,tim
     # print("Valid nodes:", len(navGrid.validNodes))
 
 
-    return route, navGrid, environmentDataService, startNode, endNode, t0, costMin, overlayPath, overlayBounds
+    return navGrid, environmentDataService, startNode, endNode, t0, costMin
 
 # default prices: VLSFO ~600 $/t, VLCC time charter ~40k $/day (~1700 $/h)
-def calculateRoute(startPoint, endPoint, dateTime, distanceWeight=1.0, fuelTimeWeight=0.5, priceFuel=600.0, priceTime=1700.0, onProgress=None):
+def calculateOptimizedRoute(baseRoute,startPoint, endPoint, dateTime, distanceWeight=1.0, fuelTimeWeight=0.5, priceFuel=600.0, priceTime=1700.0, onProgress=None):
     speeds=[6,8,10,12,14]
     timeBinSize=3
     start_time = time.time()
-    route, navGrid, environmentDataService, startNode, endNode, t0, costMin, overlayPath, overlayBounds = setup(
-        startPoint, endPoint, dateTime, speeds, distanceWeight=distanceWeight, fuelTimeWeight=fuelTimeWeight,
+    navGrid, environmentDataService, startNode, endNode, t0, costMin = setup(
+        baseRoute, startPoint, endPoint, dateTime, speeds, distanceWeight=distanceWeight, fuelTimeWeight=fuelTimeWeight,
         timeBinSize=timeBinSize, priceFuel=priceFuel, priceTime=priceTime)
     end_time = time.time()
     print(f"Time taken to setup: {end_time - start_time} seconds")
@@ -77,8 +76,8 @@ def calculateRoute(startPoint, endPoint, dateTime, distanceWeight=1.0, fuelTimeW
     end_time = time.time()
     print(f"Time taken to calculate route: {end_time - start_time} seconds")
     if goalKey is None:
-        return route, None, overlayPath, overlayBounds
-    return route, reconstructPath(parents, goalKey, navGrid, t0), overlayPath, overlayBounds
+        return None 
+    return reconstructPath(parents, goalKey, navGrid, t0) 
 
 
 def neighbors(node, departureTime,navGrid,speeds):
@@ -108,7 +107,7 @@ def neighbors(node, departureTime,navGrid,speeds):
 
 def legCost(distanceNm, fuelKg, timeH, distanceWeight, fuelTimeWeight, priceFuel, priceTime):
     # priceFuel in $/tonne, priceTime in $/hour; shared by edgeCost and the heuristic so they can't drift apart
-    return distanceWeight*distanceNm + fuelTimeWeight*fuelKg/1000*priceFuel + (1-fuelTimeWeight)*timeH*priceTime
+    return distanceWeight*distanceNm + (1-fuelTimeWeight)*fuelKg/1000*priceFuel + fuelTimeWeight*timeH*priceTime
 
 def edgeCost(node,move,departureTime,vsl,environmentDataService,distanceWeight,fuelTimeWeight,priceFuel,priceTime):
     neighbor,speed,heading,distance,timeH,arrivalTime=move
@@ -141,7 +140,7 @@ def aStar(start,goal,t0,vsl,speeds,navGrid,environmentDataService,costMin,timeBi
     exploredNodes=[]
     sentCells=set()  
     expanded=0
-    webSocketFrequency = 5
+    webSocketFrequency = 200
 
     while openList:
         f,counter,g,h,currentNode,depTime = heapq.heappop(openList)
@@ -149,8 +148,7 @@ def aStar(start,goal,t0,vsl,speeds,navGrid,environmentDataService,costMin,timeBi
             sentCells.add(currentNode)
             exploredNodes.append([float(c) for c in navGrid.nodeToCoordinates(currentNode)])
         expanded+=1
-        if expanded%1000==0 and webSocketFrequency < 100:
-            webSocketFrequency = webSocketFrequency * 2
+      
         if onProgress and exploredNodes and expanded % webSocketFrequency == 0:
             onProgress({"exploredNodes": exploredNodes,
                         })

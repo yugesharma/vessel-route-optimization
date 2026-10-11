@@ -1,6 +1,7 @@
 import { MapContainer, TileLayer, useMapEvents, CircleMarker, Polyline, useMap, ImageOverlay } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useState, useEffect, useRef } from 'react'
+import WeatherSlider from './WeatherSlider'
 
 type MapClickHandlerProps = {
   onMapClick: (latlng: [number, number]) => void
@@ -35,13 +36,9 @@ type MapViewProps = {
   optimizedRouteAvgSpeed: number | null
   routeDistance: number | null
   duration: number | null
-  waveOverlayUrl: string | null
-  overlayBounds: {
-    north: number
-    south: number
-    east: number
-    west: number
-  } | null
+  overlayReady: boolean
+  overlayDate: string | null
+  overlayHours: number[] | null
   exploredNodes: [number, number][]
   frontierNodes: [number, number][]
 }
@@ -69,11 +66,16 @@ function MapUpdater({
 function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, 
   setStartLocation, setEndLocation, basicRoutePoints, optimizedRoutePoints,
   optimizedRouteDistance, optimizedRouteTime, optimizedRouteFuel, optimizedRouteAvgSpeed,
-  routeDistance, duration, waveOverlayUrl, overlayBounds, exploredNodes, frontierNodes }: MapViewProps) {
+  routeDistance, duration, overlayReady, overlayDate, overlayHours, exploredNodes, frontierNodes }: MapViewProps) {
   const [selectingStart, setSelectingStart] = useState(true)
   const [selectedRoute, setSelectedRoute] = useState<'basic' | 'optimized' | null>(null)
   const hoverRef = useRef<HTMLDivElement>(null)
-  
+  const [selectedOverlayHour, setSelectedOverlayHour] = useState<number | null>(0)
+  const handleOverlayHourClick = (hour: number) => {
+    setSelectedOverlayHour(hour)
+    console.log("Selected overlay hour:", hour)
+  }
+
   const handleMapClick = (latlng: [number, number]) => {
     if (selectingStart) {
       setStartPoint(latlng)
@@ -120,12 +122,12 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint,
   
   {endPoint && <CircleMarker center={endPoint} radius={5} pathOptions={{ color: 'blue' }} />}
 
-  {waveOverlayUrl && overlayBounds && (
+  {overlayReady && (
   <ImageOverlay
-    url={`http://127.0.0.1:8000${waveOverlayUrl}`}
+    url={`http://localhost:8000/waveOverlays/${overlayDate}/${selectedOverlayHour}.png`}
     bounds={[
-      [overlayBounds.south, overlayBounds.west],
-      [overlayBounds.north, overlayBounds.east]
+      [-90, -180],
+      [90, 180]
     ]}
     opacity={0.5}
   />
@@ -161,8 +163,6 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint,
     }
   }}/>
 )}
-
- 
 
 </MapContainer>
 
@@ -210,9 +210,11 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint,
 )}
 
 <div ref={hoverRef} className="hover-info-panel" />
-
+<div className='weather-slider-container'>
+  <WeatherSlider overlayReady={overlayReady} overlayDate={overlayDate} overlayHours={overlayHours} selectedOverlayHour={selectedOverlayHour} setSelectedOverlayHour={setSelectedOverlayHour}/>
 </div>
-)
+</div>
+);
 }
 
 

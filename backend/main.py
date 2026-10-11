@@ -1,8 +1,8 @@
 # main.py
 
 import asyncio
-from environmentDataService import getWeatherData
-from RouteCalculation import calculateRoute
+from environmentDataService import getWeatherData, DATE_STRING, FORECAST_HOURS
+from RouteCalculation import calculateOptimizedRoute, getBaseRoute
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -10,9 +10,17 @@ import os
 import requests
 from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, WebSocket
-app = FastAPI()
+from contextlib import asynccontextmanager
 
-waveOverlayDir = os.path.join(os.path.dirname(__file__), "data", "waveOverlays")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.weather=asyncio.create_task(asyncio.to_thread(getWeatherData))
+    yield
+
+app = FastAPI(lifespan=lifespan)
+
+waveOverlayDir = os.path.join(os.path.dirname(__file__), "data", "waveOverlays", DATE_STRING)
+os.makedirs(waveOverlayDir, exist_ok=True)   
 app.mount("/wave-overlays", StaticFiles(directory=waveOverlayDir), name="wave-overlays")
 
 load_dotenv()
@@ -60,12 +68,19 @@ async def geocode(location: str):
 def runRoute(request: RouteRequest, onProgress=None):
     startPoint = (request.startPoint[1], request.startPoint[0])
     endPoint = (request.endPoint[1], request.endPoint[0])
-    basicRoute, optimizedRoute, overlayPath, overlayBounds = calculateRoute(
-        startPoint, endPoint, request.dateTime, distanceWeight=request.distanceWeight,
+    baseRoute = getBaseRoute(startPoint, endPoint)
+    optimizedRoute  = calculateOptimizedRoute(
+        baseRoute,startPoint, endPoint, request.dateTime, distanceWeight=request.distanceWeight,
         fuelTimeWeight=request.fuelTimeWeight, onProgress=onProgress)
-    return {"basicRoute": basicRoute.baseRoute, "optimizedRoute": optimizedRoute, "waveOverlayUrl": overlayPath, "overlayBounds": overlayBounds}
+    return {"optimizedRoute": optimizedRoute}
 
-@app.post("/route")
+@app.get("/baseRoute")
+async def baseRoute(startPointLat: float, startPointLon: float, endPointLat: float, endPointLon: float):
+    startPoint = (startPointLon, startPointLat)
+    endPoint = (endPointLon, endPointLat)
+    return {"baseRoute": getBaseRoute(startPoint, endPoint)}
+
+@app.post("/optimizedRoute")
 async def calculate_route(request: RouteRequest):
     return runRoute(request)
 
@@ -83,7 +98,7 @@ async def route_websocket(websocket: WebSocket):
     await websocket.send_json({"type": "result", **result})
     await websocket.close()
 
-@app.get("/")
-async def root():
-    getWeatherData()
-    return {"message": "Weather data downloaded successfully"}
+@app.get("/overlays")
+def overlays():
+    done=os.path.join(waveOverlayDir, "done")
+    return {"done": os.path.exists(done), "date": DATE_STRING, "hours": FORECAST_HOURS}

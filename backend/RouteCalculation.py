@@ -111,10 +111,16 @@ def legCost(distanceNm, fuelKg, timeH, distanceWeight, fuelTimeWeight, priceFuel
 
 def edgeCost(node,move,departureTime,vsl,environmentDataService,distanceWeight,fuelTimeWeight,priceFuel,priceTime):
     neighbor,speed,heading,distance,timeH,arrivalTime=move
-    weather=environmentDataService.weatherAt(node,departureTime)
-    fuel=vsl.legFuel(speed,heading,timeH,weather)
-    if fuel is None:
+    # weather at both ends of the leg: worst Hs decides safety, fuel is the mean of the two
+    weatherDep=environmentDataService.weatherAt(node,departureTime)
+    weatherArr=environmentDataService.weatherAt(neighbor,arrivalTime)
+    if max(weatherDep["Hs"],weatherArr["Hs"]) >= vsl.maxWaveHeight:
+        return None  # leg touches seas above the vessel's operating limit
+    fuelDep=vsl.legFuel(speed,heading,timeH,weatherDep)
+    fuelArr=vsl.legFuel(speed,heading,timeH,weatherArr)
+    if fuelDep is None or fuelArr is None:
         return None  # speed not achievable in this weather (needs more than MCR)
+    fuel=(fuelDep+fuelArr)/2
     return legCost(distance, fuel, timeH, distanceWeight, fuelTimeWeight, priceFuel, priceTime),fuel
 
 def timeBin(t0, t, binSize):

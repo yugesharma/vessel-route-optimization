@@ -14,7 +14,7 @@ class SternShape(IntEnum):
 
 class Vessel:
     def __init__(self, L, B, draft, TF, CM, CB, CWP, ABT, hB, AT, lcb, Cstern=SternShape.NORMAL, kyy=0.25, TA=None, LE=None, LR=None,
-                 eta=0.70, sfoc=175.0, mcrKw=27000.0):
+                 eta=0.70, sfoc=175.0, mcrKw=27000.0, maxWaveHeight=8.0):
         self.L = L
         self.B = B
         self.draft = draft
@@ -38,6 +38,7 @@ class Vessel:
         self.eta = eta  # overall propulsive efficiency: effective power / brake power
         self.sfoc = sfoc  # specific fuel oil consumption (g/kWh)
         self.mcrKw = mcrKw  # engine maximum continuous rating (kW); legs needing more are infeasible
+        self.maxWaveHeight = maxWaveHeight  # operating limit on significant wave height (m); legs touching higher seas are infeasible
 
         # derived hull values used by the calm-water model
         self.getCP()

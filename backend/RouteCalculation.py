@@ -81,21 +81,24 @@ def calculateOptimizedRoute(baseRoute,startPoint, endPoint, dateTime, distanceWe
 
 
 def neighbors(node, departureTime,navGrid,speeds):
-    lat1, lon1 = navGrid.nodeToCoordinates(node)
+    validNeighbors=navGrid.neighborCache.get(node)
+    if validNeighbors is None:
+        lat1, lon1 = navGrid.nodeToCoordinates(node)
 
-    validNeighbors=[]
-    for dr, dc in ((-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)):
-        idx=(node[0]+dr,node[1]+dc)
-        if idx not in navGrid.validNodes:
-            continue
-        # diagonal: both side cells must be valid, so the leg can't cut a land corner
-        if dr and dc and ((node[0]+dr,node[1]) not in navGrid.validNodes
-                          or (node[0],node[1]+dc) not in navGrid.validNodes):
-            continue
-        lat2, lon2 = navGrid.nodeToCoordinates(idx)
-        azimuth,_,distanceM = geod.inv(lon1,lat1,lon2,lat2)
-        validNeighbors.append((idx,distanceM/1852,azimuth))  # distance in nm, heading in deg true
-    
+        validNeighbors=[]
+        for dr, dc in ((-1,-1),(-1,0),(-1,1),(0,-1),(0,1),(1,-1),(1,0),(1,1)):
+            idx=(node[0]+dr,node[1]+dc)
+            if idx not in navGrid.validNodes:
+                continue
+            # diagonal: both side cells must be valid, so the leg can't cut a land corner
+            if dr and dc and ((node[0]+dr,node[1]) not in navGrid.validNodes
+                              or (node[0],node[1]+dc) not in navGrid.validNodes):
+                continue
+            lat2, lon2 = navGrid.nodeToCoordinates(idx)
+            azimuth,_,distanceM = geod.inv(lon1,lat1,lon2,lat2)
+            validNeighbors.append((idx,distanceM/1852,azimuth))  # distance in nm, heading in deg true
+        navGrid.neighborCache[node]=validNeighbors
+
     legalMoves=[]
     for neighbor,distance,heading in validNeighbors:
         for speed in speeds:
@@ -109,10 +112,9 @@ def legCost(distanceNm, fuelKg, timeH, distanceWeight, fuelTimeWeight, priceFuel
     # priceFuel in $/tonne, priceTime in $/hour; shared by edgeCost and the heuristic so they can't drift apart
     return distanceWeight*distanceNm + (1-fuelTimeWeight)*fuelKg/1000*priceFuel + fuelTimeWeight*timeH*priceTime
 
-def edgeCost(node,move,departureTime,vsl,environmentDataService,distanceWeight,fuelTimeWeight,priceFuel,priceTime):
+def edgeCost(move,weatherDep,vsl,environmentDataService,distanceWeight,fuelTimeWeight,priceFuel,priceTime):
     neighbor,speed,heading,distance,timeH,arrivalTime=move
     # weather at both ends of the leg: worst Hs decides safety, fuel is the mean of the two
-    weatherDep=environmentDataService.weatherAt(node,departureTime)
     weatherArr=environmentDataService.weatherAt(neighbor,arrivalTime)
     if max(weatherDep["Hs"],weatherArr["Hs"]) >= vsl.maxWaveHeight:
         return None  # leg touches seas above the vessel's operating limit
@@ -139,14 +141,17 @@ def aStar(start,goal,t0,vsl,speeds,navGrid,environmentDataService,costMin,timeBi
     parents={}
     parents[(start,0)]=None  # parent is a tuple (currKey,speed,heading,distance,timeH,arrivalTime,g2,fuel)
     g=0
+    nodeHeuristicDict={}
     h=heuristic(start,goal,navGrid,costMin)
+    nodeHeuristicDict[start]=h
     f=g+h
-    openList=[(f,0,g,h,start,t0)]
+    print('start time:', t0)
+    openList=[(f,0,g,h,start,t0)] 
     heapq.heapify(openList)
     exploredNodes=[]
     sentCells=set()  
     expanded=0
-    webSocketFrequency = 200
+    webSocketFrequency = 20
 
     while openList:
         f,counter,g,h,currentNode,depTime = heapq.heappop(openList)
@@ -156,7 +161,9 @@ def aStar(start,goal,t0,vsl,speeds,navGrid,environmentDataService,costMin,timeBi
         expanded+=1
       
         if onProgress and exploredNodes and expanded % webSocketFrequency == 0:
+            currBestPath=reconstructPath(parents, currKey, navGrid, t0)
             onProgress({"exploredNodes": exploredNodes,
+                        "currBestPath": currBestPath,
                         })
             exploredNodes=[]
         currKey=(currentNode,timeBin(t0,depTime,timeBinSize))
@@ -167,9 +174,10 @@ def aStar(start,goal,t0,vsl,speeds,navGrid,environmentDataService,costMin,timeBi
         if currentNode == goal:
             return currKey,g,parents
         moves=neighbors(currentNode,depTime,navGrid,speeds)
+        weatherDep=environmentDataService.weatherAt(currentNode,depTime)
         for move in moves:
             nextNode,speed,heading,distance,timeH,arrivalTime=move
-            result = edgeCost(currentNode,move,depTime,vsl,environmentDataService,distanceWeight=distanceWeight,
+            result = edgeCost(move,weatherDep,vsl,environmentDataService,distanceWeight=distanceWeight,
                               fuelTimeWeight=fuelTimeWeight,priceFuel=priceFuel,priceTime=priceTime)
             if result is None:
                 continue
@@ -181,7 +189,9 @@ def aStar(start,goal,t0,vsl,speeds,navGrid,environmentDataService,costMin,timeBi
                 bestCost[key2]=g2
                 
                 parents[key2]=(currKey,speed,heading,distance,timeH,arrivalTime,g2,fuel)
-                h2=heuristic(nextNode,goal,navGrid,costMin)
+                if nextNode not in nodeHeuristicDict:
+                    nodeHeuristicDict[nextNode]=heuristic(nextNode,goal,navGrid,costMin)
+                h2=nodeHeuristicDict[nextNode]
                 f2=g2+h2
                 heapq.heappush(openList,(f2,counter+1,g2,h2,nextNode,arrivalTime))
     return None,None,None

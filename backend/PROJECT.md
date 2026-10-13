@@ -68,7 +68,7 @@ start, end
 Given speed, heading and weather for one leg, return fuel burned.
 
 ```
-R_total = R_calm + max(0, R_wave)                           [N]  (R_wind not implemented yet)
+R_total = R_calm + max(0, R_wave) + max(0, R_wind)          [N]
 P_E     = R_total * V_ms / 1000                             [kW, effective power]
 P_B     = P_E / eta                                         [kW, brake power]
 fuelKg  = P_B * sfoc * timeH / 1000
@@ -78,10 +78,10 @@ If `P_B > 0.9 * mcrKw` the leg is infeasible: `legFuel` returns `None` and the m
 
 - **R_calm**: Holtrop-Mennen, `calmWaterResistance(V, waterTemp, vessel)` in `calmWaterResistance.py`.
 - **R_wave**: SNNM (ITTC 7.5-04-01-01.1 Rev 08 2024, App. G.3), all headings. Inputs: significant wave height, wave period, relative wave heading (`waveDir − heading`), ship dimensions incl. waterline entrance/run lengths `LE`/`LR` (estimated from Holtrop if unknown), speed. May be slightly negative in stern-quarter/following seas; `legFuel` floors it at 0 so no leg costs less than calm water, which keeps the heuristic admissible. Equation taken from the standard.
-- **R_wind** (not implemented yet): `0.5 * rho_air * C_D * A_front * V_app² * cos(theta_app)`. Apparent wind = true wind vector − ship velocity vector; `theta_app` is the apparent wind angle off the bow (negative resistance for a tailwind).
+- **R_wind**: Park et al. 2024 (J. Mar. Sci. Eng. 12, 1694) Eq. 9, `windResistance` in `windResistance.py`: `0.5 * rho_air * A_front * (C'X(psi_R) * V_R² − CX(0) * V_S²)`. Relative wind = true wind vector − ship velocity vector; `psi_R` is its angle off the bow, `V_R` its speed. `C'X` is the tanker curve read off the paper's Fig. 7 (sea wind profile, 10 m reference height, the same height as the GEFS wind); `CX(0)` is the head-on coefficient under a uniform profile. The second term removes the still-air drag of the ship's own speed, which Holtrop's `RA` already contains. Negative in a tailwind faster than the ship; `legFuel` floors it at 0 like `R_wave`. In no wind it leaves `0.5 * rho_air * A_front * (C'X(0) − CX(0)) * V_S²`, under 1 % of `R_calm`.
 - Speed through water = speed over ground (no currents). Speed is a prescribed choice, so there is no speed-loss model.
 
-`Vessel` needs two added fields: `frontalWindageArea`, `windDragCoeff`.
+`Vessel.frontalWindageArea` (m²) is assumed for KVLCC2 (1170, scaled from the paper's tanker); 0 switches wind resistance off.
 
 ### 5.2 Reference path and corridor (`classes/route.py` `Route`, `classes/navGrid.py` `NavGrid`)
 
@@ -172,7 +172,7 @@ key        = (node, timeBin(arrival))
 |---|---|---|---|
 | `calmWaterResistance` | `V, waterTemp, vessel` | `R_calm` (N) | Holtrop-Mennen, in `calmWaterResistance.py`. |
 | `waveAddedResistance` | `vessel, Hs, Tp, relWaveHeading, speedMs` | `N` | SNNM, all headings, in `waveAddedResistance.py`. |
-| `windResistance` | `vessel, windSpeedMs, windDirFrom, headingDeg, speedMs` | `N` | Apparent-wind drag; may be negative. Not implemented yet. |
+| `windResistance` | `vessel, windSpeedMs, windDirFrom, headingDeg, speedMs` | `N` | Added resistance due to wind (Park et al. 2024 Eq. 9), in `windResistance.py`; may be negative. |
 | `Vessel.legFuel` | `speedKn, headingDeg, timeH, weather` | `fuelKg` or `None` | Applies the section 5.1 formulas; `None` if the leg needs more than 90 % MCR. |
 | `Vessel.calmWaterFuelPerNM` | `speedKn` | kg/nm | Calm-water fuel per nautical mile; used for `costMin`. |
 
@@ -185,7 +185,7 @@ key        = (node, timeBin(arrival))
 | `timeBin` | `t0, t, binSize` | `int` | Bin index. |
 | `neighbors` | `node, departureTime, navGrid, speeds` | list of moves `(nextNode, speedKn, headingDeg, distNm, timeH, arrivalTime)` | Generates legal moves only: 8 cells × speeds, skipping invalid nodes and land-clipping diagonals. No cost here. `arrivalTime = departureTime + distNm / speedKn`. |
 | `edgeCost` | `node, move, departureTime, vsl, environmentDataService, distanceWeight, fuelTimeWeight` | `(cost, fuelKg)` or `None` | Looks up weather at `node` for `departureTime`, computes fuel with `legFuel`, then blends (formula below). `None` if the leg is infeasible. |
-| `heuristic` | `node, goal, navGrid, costMin` | cost units | Geodesic nm × `costMin`. Admissible: `R_wave` is floored at 0 and wind is not modelled, so no leg costs less than calm water. |
+| `heuristic` | `node, goal, navGrid, costMin` | cost units | Geodesic nm × `costMin`. Admissible: `R_wave` and `R_wind` are floored at 0, so no leg costs less than calm water. |
 | `aStar` | `start, goal, t0, vsl, speeds, navGrid, environmentDataService, costMin, timeBinSize, distanceWeight, fuelTimeWeight` | `(goalKey, g, parents)` or `(None, None, None)` | The search loop (6.4). |
 | `reconstructPath` | `parents, goalKey, navGrid, t0` | list of points | Backtracks (6.6). |
 | `summarizeRoute` | `legs` | totals | Sums distance, fuel and time. Not written yet. |
@@ -244,8 +244,8 @@ h(node)      = geodesicNm(node, goal) * costMin
 
 `costPerNm` must use the same formula as `edgeCost`, divided by distance.
 
-- Never overestimates: the geodesic is the shortest possible distance, and the cheapest calm-water cost per nm is a floor because `R_wave` is floored at 0 in `legFuel`.
-- **Caveat**: when `R_wind` is added, a tailwind can make it negative. Either clamp it at 0 or lower `costMin` by the largest possible tailwind saving. Otherwise `h` can overestimate and A* may return a non-optimal route.
+- Never overestimates: the geodesic is the shortest possible distance, and the cheapest calm-water cost per nm is a floor because `R_wave` and `R_wind` are floored at 0 in `legFuel`.
+- **Caveat**: flooring `R_wind` at 0 means a tailwind saves no fuel. To credit it, lower `costMin` by the largest possible tailwind saving; otherwise `h` can overestimate and A* may return a non-optimal route.
 - Weather does not appear in `h`, so `h` is valid for any forecast.
 
 ### 6.6 Getting the route

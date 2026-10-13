@@ -9,8 +9,8 @@ class FakeWeather:
 
     def weatherAt(self, node, time):
         if node in self.badWeatherNodes:
-            return {"Hs": 15, "Tp": 10, "waveDir": 90}
-        return {"Hs": 0, "Tp": 0, "waveDir": 0}
+            return {"Hs": 15, "Tp": 10, "waveDir": 90, "windSpeed": 0, "windDir": 0}
+        return {"Hs": 0, "Tp": 0, "waveDir": 0, "windSpeed": 0, "windDir": 0}
 
 def run_astar(start,goal,badWeatherNodes,n=7):
     navGrid = NavGrid()

@@ -1,6 +1,6 @@
 import { MapContainer, TileLayer, useMapEvents, CircleMarker, Polyline, useMap, ImageOverlay } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, memo } from 'react'
 import WeatherSlider from './WeatherSlider'
 import { Waves } from 'lucide-react'
 
@@ -40,9 +40,20 @@ type MapViewProps = {
   overlayReady: boolean
   overlayDate: string | null
   overlayHours: number[] | null
-  exploredNodes: [number, number][]
+  exploredBatches: [number, number][][]
   frontierNodes: [number, number][]
+  currBestPath: [number, number][] | null
 }
+
+const exploredStyle={color:'yellow'}
+
+const ExploredBatch=memo(({nodes}:{nodes:[number,number][]})=> (
+  <>
+    {nodes.map((node,i)=>(
+      <CircleMarker key={i} center={node} radius={0.5} pathOptions={exploredStyle} interactive={false}/>
+    ))}
+  </>
+))
 
 function MapUpdater({
   startPoint,
@@ -67,7 +78,7 @@ function MapUpdater({
 function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, 
   setStartLocation, setEndLocation, basicRoutePoints, optimizedRoutePoints,
   optimizedRouteDistance, optimizedRouteTime, optimizedRouteFuel, optimizedRouteAvgSpeed,
-  routeDistance, duration, overlayReady, overlayDate, overlayHours, exploredNodes, frontierNodes }: MapViewProps) {
+  routeDistance, duration, overlayReady, overlayDate, overlayHours, exploredBatches, frontierNodes, currBestPath }: MapViewProps) {
   const [selectingStart, setSelectingStart] = useState(true)
   const [selectedRoute, setSelectedRoute] = useState<'basic' | 'optimized' | null>(null)
   const hoverRef = useRef<HTMLDivElement>(null)
@@ -92,6 +103,7 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint,
       hoverRef.current.textContent = `${latlng[0].toFixed(4)}, ${latlng[1].toFixed(4)}`
     }
   }
+  
   return( 
   <div className="map-wrapper">
     <MapContainer
@@ -110,11 +122,16 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint,
   
   <MapClickHandler onMapClick={handleMapClick} onHover={handleHover} />
 
-  {exploredNodes && exploredNodes.length > 0 && (
-    exploredNodes.map((node,i) => (
-      <CircleMarker key={i} center={node} radius={0.5} pathOptions={{ color: 'yellow' }} />
-    ))
+  {exploredBatches && exploredBatches.length > 0 && (
+    exploredBatches.map((batch,i)=> <ExploredBatch key={i} nodes={batch} />)
   )}
+
+  {currBestPath && currBestPath.length > 0 && (
+  <Polyline positions={currBestPath} pathOptions={{ color: 'green',weight: 3 }} />
+)}
+
+
+ 
   
   {startPoint && <CircleMarker center={startPoint} radius={5} pathOptions={{ color: 'red' }} />}
   
@@ -151,7 +168,6 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint,
   <Polyline positions={optimizedRoutePoints} pathOptions={{ color: 'green',weight: selectedRoute === "optimized" ? 7 : 3 }} eventHandlers={{
     mouseover: () => {
       setSelectedRoute("optimized")
-      console.log("Selected Route: Optimized")
     },
     mouseout: () => {
       setSelectedRoute(null)

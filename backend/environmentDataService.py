@@ -50,7 +50,7 @@ class EnvironmentDataService:
     
     def weatherAt(self, node, t):
         row, col = node
-        s = int(np.abs(self.stepHours - t).argmin())
+        s = min(max(round(t / 3), 0), len(self.stepHours) - 1)
         a = self.arrays
         return {"Hs": float(a["swh"][s, row, col]), "Tp": float(a["perpw"][s, row, col]),
                 "waveDir": float(a["dirpw"][s, row, col]), "windSpeed": float(a["ws"][s, row, col]),

@@ -4,6 +4,7 @@ from enum import IntEnum
 from calmWaterResistance import LR as holtropLR
 from calmWaterResistance import calmWaterResistance
 from waveAddedResistance import waveAddedResistance
+from windResistance import windResistance
 
 class SternShape(IntEnum):
     PRAM_WITH_GONDOLA = -25
@@ -14,7 +15,7 @@ class SternShape(IntEnum):
 
 class Vessel:
     def __init__(self, L, B, draft, TF, CM, CB, CWP, ABT, hB, AT, lcb, Cstern=SternShape.NORMAL, kyy=0.25, TA=None, LE=None, LR=None,
-                 eta=0.70, sfoc=175.0, mcrKw=27000.0, maxWaveHeight=8.0):
+                 eta=0.70, sfoc=175.0, mcrKw=27000.0, maxWaveHeight=8.0, frontalWindageArea=0.0):
         self.L = L
         self.B = B
         self.draft = draft
@@ -34,6 +35,7 @@ class Vessel:
         self.E1 = 0 # Bow entrance angle
         self.E2 = 0 # Stern entrance angle
         self.CP = 0 # Prismatic coefficient
+        self.frontalWindageArea = frontalWindageArea  # frontal projected area above the waterline (m²); 0 = no wind resistance
         # fuel model
         self.eta = eta  # overall propulsive efficiency: effective power / brake power
         self.sfoc = sfoc  # specific fuel oil consumption (g/kWh)
@@ -75,11 +77,12 @@ class Vessel:
         return self.wettedSurfaceArea
     
     def legFuel(self, speedKn, headingDeg, timeH, weather, waterTemp=15.0):
-        #no R_wind yet, add it later
         V = speedKn * 0.5144
         R_calm = calmWaterResistance(V, waterTemp, self)  # N
         R_wave = waveAddedResistance(self, weather["Hs"], weather["Tp"], weather["waveDir"] - headingDeg, V)  # N, may be < 0
-        R_total = R_calm + max(0, R_wave)  # floor R_wave at 0 so no leg beats calm water; keeps the A* heuristic admissible
+        R_wind = windResistance(self, weather["windSpeed"], weather["windDir"], headingDeg, V)  # N, < 0 in a tailwind
+        # floor R_wave and R_wind at 0 so no leg beats calm water; keeps the A* heuristic admissible
+        R_total = R_calm + max(0, R_wave) + max(0, R_wind)
         P_B = R_total * V / 1000 / self.eta  # brake power (kW)
         if P_B > 0.9*self.mcrKw:
             return None
@@ -106,4 +109,5 @@ vsl = Vessel(
     eta=0.70,  # assumed; typical tanker 0.65-0.75, replace with sea-trial/model-test value
     sfoc=175.0,  # assumed; modern slow-speed two-stroke 170-190 g/kWh
     mcrKw=27000.0,  # assumed; not published for KVLCC2, typical VLCC main engine
+    frontalWindageArea=1170.0,  # assumed; not published for KVLCC2. Park et al. 2024 tanker (801 m², B = 48 m) scaled by (58/48)²
 )

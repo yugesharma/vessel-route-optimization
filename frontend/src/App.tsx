@@ -23,13 +23,14 @@ function App() {
   const [optimizedRouteFuel, setOptimizedRouteFuel] = useState<number | null>(null)
   const [optimizedRouteAvgSpeed, setOptimizedRouteAvgSpeed] = useState<number | null>(null)
 
-  const [exploredNodes, setExploredNodes] = useState<[number, number][]>([])
+  const [exploredBatches, setExploredBatches] = useState<[number, number][][]>([])
   const [frontierNodes, setFrontierNodes] = useState<[number, number][]>([])
   const [generating, setGenerating] = useState(false)
   const [overlayReady, setOverlayReady] = useState(false)
   const [overlayDate, setOverlayDate] = useState<string | null>(null)
   const [overlayHours, setOverlayHours] = useState<number[] | null>(null)
-
+  const [currBestPath, setCurrBestPath] = useState<[number, number][] | null>(null)
+  
   useEffect(() => {
     const fetchOverlayInfo = async () => {
       try {
@@ -74,17 +75,13 @@ function App() {
         const optimizedTime = legs.reduce((sum: number, leg: any) => { return sum + leg.timeH},0)
         const optimizedFuel = legs.reduce((sum: number, leg: any) => { return sum + leg.fuelKg},0)
         const optimizedAvgSpeed = optimizedDistance / optimizedTime
-        
+        setCurrBestPath([])
         setOptimizedRouteAvgSpeed(optimizedAvgSpeed)
         setOptimizedRouteDistance(optimizedDistance)
         setOptimizedRouteTime(optimizedTime)
         setOptimizedRouteFuel(optimizedFuel)
         
-        console.log("Optimized average speed:", optimizedAvgSpeed)
-        console.log("Optimized fuel:", optimizedFuel)
-        console.log("Optimized distance:", optimizedDistance)
-        console.log("Optimized time:", optimizedTime)
-
+   
         const optimizedPoints = legs.map(
           (leg: any) => [leg.lat, leg.lon] as [number, number])
         
@@ -94,7 +91,10 @@ function App() {
       else if(data.type === 'progress') {
         
         // setFrontierNodes(data.open)
-        setExploredNodes((exploredNodes) => [...(exploredNodes || []), ...data.exploredNodes])
+        setExploredBatches((batches) => [...batches, data.exploredNodes])
+        if(data.currBestPath){
+          setCurrBestPath(data.currBestPath)
+        }
       }
     }
   
@@ -120,6 +120,9 @@ function App() {
       alert('Please select start, end points and date time')
       return
     }
+    setBasicRoutePoints([])
+    setOptimizedRoutePoints([])
+
     setGenerating(true)
     fetchBaseRoute(startPoint, endPoint)
     const ws = new WebSocket('ws://localhost:8000/ws/route')
@@ -129,8 +132,9 @@ function App() {
     ws.onmessage = (e)=>handleMessage(e)
     // server closes after the result (or on a crash): clear the search markers either way
     ws.onclose = () => {
-      setExploredNodes([])
+      setExploredBatches([])
       setFrontierNodes([])
+      setCurrBestPath([])
       setGenerating(false)
     }
   }
@@ -138,7 +142,7 @@ function App() {
   return (
     <div className="app-layout">
       <Sidebar startPoint={startPoint} startLocation={startLocation} setStartLocation={setStartLocation} endPoint={endPoint} endLocation={endLocation} setEndLocation={setEndLocation} setDateTime={setDateTime} dateTime={dateTime} distanceWeight={distanceWeight} setDistanceWeight={setDistanceWeight} windWeight={windWeight} setWindWeight={setWindWeight} waveWeight={waveWeight} setWaveWeight={setWaveWeight} handleStartLocationSearch={handleStartLocationChange} handleEndLocationSearch={handleEndLocationChange} generateRoute={generateRoute} routeDistance={routeDistance} duration={duration} fuelTimeWeight={fuelTimeWeight} setFuelTimeWeight={setFuelTimeWeight} generating={generating}/>
-      <MapView startPoint={startPoint} setStartPoint={setStartPoint} endPoint={endPoint} setEndPoint={setEndPoint} setStartLocation={setStartLocation} setEndLocation={setEndLocation} basicRoutePoints={basicRoutePoints} optimizedRoutePoints={optimizedRoutePoints} optimizedRouteDistance={optimizedRouteDistance} optimizedRouteTime={optimizedRouteTime} optimizedRouteFuel={optimizedRouteFuel} optimizedRouteAvgSpeed={optimizedRouteAvgSpeed} routeDistance={routeDistance} duration={duration} overlayReady={overlayReady} overlayDate={overlayDate} overlayHours={overlayHours} exploredNodes={exploredNodes} frontierNodes={frontierNodes} />
+      <MapView startPoint={startPoint} setStartPoint={setStartPoint} endPoint={endPoint} setEndPoint={setEndPoint} setStartLocation={setStartLocation} setEndLocation={setEndLocation} basicRoutePoints={basicRoutePoints} optimizedRoutePoints={optimizedRoutePoints} optimizedRouteDistance={optimizedRouteDistance} optimizedRouteTime={optimizedRouteTime} optimizedRouteFuel={optimizedRouteFuel} optimizedRouteAvgSpeed={optimizedRouteAvgSpeed} routeDistance={routeDistance} duration={duration} overlayReady={overlayReady} overlayDate={overlayDate} overlayHours={overlayHours} exploredBatches={exploredBatches} frontierNodes={frontierNodes} currBestPath={currBestPath} />
     </div>
   )
 }

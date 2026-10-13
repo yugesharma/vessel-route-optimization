@@ -12,6 +12,7 @@ class NavGrid:
         self.corridorPolygon = None
         self.corridorBoundingBox = None
         self.validNodes = set()
+        self.neighborCache = {}
         self.latitudes = None
         self.longitudes = None
 
@@ -56,6 +57,7 @@ class NavGrid:
 
         valid = seaMask.values & inCorridor & hasWaves
         self.validNodes = set(map(tuple, np.argwhere(valid).tolist()))
+        self.neighborCache = {}  
         return self.validNodes
 
     def nodeToCoordinates(self, node):

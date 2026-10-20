@@ -3,6 +3,7 @@ import 'leaflet/dist/leaflet.css'
 import { useState, useEffect, useRef, memo } from 'react'
 import WeatherSlider from './WeatherSlider'
 import { Waves } from 'lucide-react'
+import Legend from './Legend'
 
 type MapClickHandlerProps = {
   onMapClick: (latlng: [number, number]) => void
@@ -122,16 +123,16 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint,
   
   <MapClickHandler onMapClick={handleMapClick} onHover={handleHover} />
 
+  
+
   {exploredBatches && exploredBatches.length > 0 && (
     exploredBatches.map((batch,i)=> <ExploredBatch key={i} nodes={batch} />)
   )}
 
   {currBestPath && currBestPath.length > 0 && (
   <Polyline positions={currBestPath} pathOptions={{ color: 'green',weight: 3 }} />
-)}
+  )}
 
-
- 
   
   {startPoint && <CircleMarker center={startPoint} radius={5} pathOptions={{ color: 'red' }} />}
   
@@ -230,6 +231,7 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint,
 >
   <Waves size={20} strokeWidth={1.75} />
 </button>
+  <Legend visible={showWaveOverlay} />
   <WeatherSlider overlayReady={overlayReady} overlayDate={overlayDate} overlayHours={overlayHours} selectedOverlayHour={selectedOverlayHour} setSelectedOverlayHour={setSelectedOverlayHour}/>
 </div>
 );

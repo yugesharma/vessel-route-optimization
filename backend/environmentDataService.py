@@ -12,6 +12,8 @@ import threading
 _forecastLock=threading.Lock()
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+import matplotlib.cm as cm
 
 DATE_STRING = date.today().strftime("%Y%m%d")
 FORECAST_HOURS = list(range(0, 7 * 24 + 1, 3))  
@@ -162,6 +164,14 @@ def createWeatherOverlay(weatherDir):
         open(done, "w").close()
         
         print("Wave overlays created successfully")
+        colors={}
+        cmap=matplotlib.colormaps['turbo']
+        for i in range(10):
+            norm_val=np.clip((i-0)/(10-0),0,1)
+            hex_code=mcolors.to_hex(cmap(norm_val))
+            colors[i]=hex_code
+        print('colors ',colors)
+        
         return done
 
 def getWeatherForecast(weather_dir: str) -> str:
@@ -175,14 +185,13 @@ def getWeatherForecast(weather_dir: str) -> str:
 def getWeatherData():
     data_dir = os.path.join(os.path.dirname(__file__), "data")
     weather_dir = os.path.join(data_dir, "weatherData")
-    wave_dir = os.path.join(data_dir, "waveData")
-    wavepngs_dir = os.path.join(data_dir, "wavepngs")
 
-    for d in (data_dir, weather_dir, wave_dir, wavepngs_dir):
+    for d in (data_dir, weather_dir):
         os.makedirs(d, exist_ok=True)
 
     getWeatherForecast(weather_dir)
     createWeatherOverlay(weather_dir)
+    
 
     if os.path.exists(os.path.join(weather_dir, "steps_" + DATE_STRING)):
         for file in os.listdir(weather_dir):

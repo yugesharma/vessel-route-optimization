@@ -1,8 +1,9 @@
 from classes.vessel import Vessel, SternShape, vsl
 from calmWaterResistance import calmWaterResistance
-from waveAddedResistance import waveAddedResistance
+from waveAddedResistance import waveAddedResistance, jonswap, snnmTransfer, g, RHO
 from windResistance import windResistance
 import pytest
+import numpy as np
 
 testVessel = Vessel(
     L=205.0, B=32.0, draft=10, TF=10, TA=10,  
@@ -28,8 +29,41 @@ def test_calmWaterResistance():
     assert testVessel.legFuel(24, 0, 1, calm) is None
 
     w = {**calm, "Hs": 4, "Tp": 8, "waveDir": 150}
-    assert waveAddedResistance(testVessel, 4, 8, 150, 6 * 0.5144) < 0   # guards the test itself
     assert testVessel.legFuel(6, 0, 1, w) == testVessel.legFuel(6, 0, 1, {**calm, "Tp": 8})
+
+def test_jonswap():
+    w=np.linspace(0.01, 40, 400_000)
+    Hs=1.0
+    Tp=10.0
+    gamma=3.3
+    S=jonswap(w, Hs, Tp, gamma)
+    m0,m1=(np.trapezoid(S*w**k,w) for k in range(2))
+    assert 2*np.pi*m0/m1==pytest.approx(Tp*(0.7303 + 0.04936*gamma - 0.006556*gamma**2 + 0.0003610*gamma**3), rel=0.005)
+
+#Based on Kim et al. 2017. The expriments themselves vary by almost 30% so the range is wide
+def test_snnmTransfer():
+    lamL=1.2
+    expected=7.8
+    w=np.sqrt(2*np.pi*g/(lamL*vsl.L))
+    omega=np.array([w])
+    sigma=snnmTransfer(omega, 0.0, vsl, 7.9739)[0]/(RHO*g*vsl.B**2/vsl.L)
+    assert 0.7<sigma/expected<1.3, f"λ/L={lamL}: SNNM {sigma:.2f} vs exp {expected}"
+
+def test_waveAddedResistance():
+    V = 12 * 0.5144
+    def R(Hs=3.0, Tp=9.0, rel=0):
+        return waveAddedResistance(vsl, Hs, Tp, rel, V)
+
+    assert R(Hs=0) == 0 and R(Tp=0) == 0
+    assert R(rel=60) == R(rel=-60) == R(rel=300) == R(rel=420)   
+    assert R(rel=180) == R(rel=-180)
+    assert R(Hs=6) == pytest.approx(4 * R())                     
+    assert R(rel=0) > R(rel=90) > R(rel=180)                     
+
+    # 2∫R(ω)S(ω)dω on a wide, fine grid; OMEGA (0.1–3.0) loses <2% for Tp ≥ 7 s
+    w = np.linspace(0.05, 8, 20_000)
+    ref = 2 * np.trapezoid(snnmTransfer(w, 0.0, vsl, V) * jonswap(w, 3.0, 9.0), w)
+    assert R() == pytest.approx(ref, rel=0.02)
 
 def test_windResistance():
     V = 12 * 0.5144

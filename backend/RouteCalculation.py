@@ -1,4 +1,3 @@
-import searoute
 from classes.route import Route
 from classes.navGrid import NavGrid
 from classes.vessel import vsl

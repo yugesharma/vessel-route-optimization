@@ -85,6 +85,7 @@ uv run pytest
 ```
 
 - Calm-water resistance matches the published Holtrop-Mennen worked example within 1 %.
+- Wave added resistance calculations match the ones in the research paper for correctness.
 - A leg above 90 % MCR is rejected; negative added wave resistance is floored at zero.
 - Wind resistance is positive in a head wind, negative in a following wind and symmetric port/starboard; a tailwind never makes a leg cheaper than calm water.
 - A\* on a small grid goes straight in calm weather and routes around a block of high waves.

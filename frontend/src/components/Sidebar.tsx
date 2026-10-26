@@ -64,7 +64,6 @@ function Sidebar({distanceWeight, setDistanceWeight, windWeight, setWindWeight, 
 
 <div className="form-group">
     <label htmlFor="fuelTimeWeight">Fuel vs. Time:</label>
-      
 
         <div className="fuel-time-labels">
         <span> Save Fuel</span>

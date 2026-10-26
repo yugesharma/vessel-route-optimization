@@ -1,6 +1,7 @@
 import './App.css'
 import MapView from './components/MapView'
 import Sidebar from './components/Sidebar'
+import ResultsSidebar from './components/ResultsSidebar'
 import { useState, useEffect } from 'react'
 import { getBaseRoute, getOverlayInfo } from './api'
 
@@ -30,6 +31,8 @@ function App() {
   const [overlayDate, setOverlayDate] = useState<string | null>(null)
   const [overlayHours, setOverlayHours] = useState<number[] | null>(null)
   const [currBestPath, setCurrBestPath] = useState<[number, number][] | null>(null)
+
+  const [showResults, setShowResults] = useState(false)
   
   useEffect(() => {
     const fetchOverlayInfo = async () => {
@@ -122,6 +125,7 @@ function App() {
     }
     setBasicRoutePoints([])
     setOptimizedRoutePoints([])
+    setShowResults(true)
 
     setGenerating(true)
     fetchBaseRoute(startPoint, endPoint)
@@ -139,9 +143,23 @@ function App() {
     }
   }
 
+  const onBack = () => {
+    setShowResults(false)
+    setBasicRoutePoints([])
+    setOptimizedRoutePoints([])
+    setOptimizedRouteDistance(null)
+    setOptimizedRouteTime(null)
+    setOptimizedRouteFuel(null)
+    setOptimizedRouteAvgSpeed(null)
+  }
+
   return (
     <div className="app-layout">
-      <Sidebar startPoint={startPoint} startLocation={startLocation} setStartLocation={setStartLocation} endPoint={endPoint} endLocation={endLocation} setEndLocation={setEndLocation} setDateTime={setDateTime} dateTime={dateTime} distanceWeight={distanceWeight} setDistanceWeight={setDistanceWeight} windWeight={windWeight} setWindWeight={setWindWeight} waveWeight={waveWeight} setWaveWeight={setWaveWeight} handleStartLocationSearch={handleStartLocationChange} handleEndLocationSearch={handleEndLocationChange} generateRoute={generateRoute} routeDistance={routeDistance} duration={duration} fuelTimeWeight={fuelTimeWeight} setFuelTimeWeight={setFuelTimeWeight} generating={generating}/>
+      {showResults ? (
+        <ResultsSidebar startPoint={startPoint} endPoint={endPoint} startLocation={startLocation} endLocation={endLocation} dateTime={dateTime} optimizedRouteDistance={optimizedRouteDistance} optimizedRouteTime={optimizedRouteTime} optimizedRouteFuel={optimizedRouteFuel} optimizedRouteAvgSpeed={optimizedRouteAvgSpeed} fuelTimeWeight={fuelTimeWeight} setFuelTimeWeight={setFuelTimeWeight} waveWeight={waveWeight} setWaveWeight={setWaveWeight} generating={generating} generateRoute={generateRoute} onBack={onBack}/>
+      ) : (
+        <Sidebar startPoint={startPoint} startLocation={startLocation} setStartLocation={setStartLocation} endPoint={endPoint} endLocation={endLocation} setEndLocation={setEndLocation} setDateTime={setDateTime} dateTime={dateTime} distanceWeight={distanceWeight} setDistanceWeight={setDistanceWeight} windWeight={windWeight} setWindWeight={setWindWeight} waveWeight={waveWeight} setWaveWeight={setWaveWeight} handleStartLocationSearch={handleStartLocationChange} handleEndLocationSearch={handleEndLocationChange} generateRoute={generateRoute} routeDistance={routeDistance} duration={duration} fuelTimeWeight={fuelTimeWeight} setFuelTimeWeight={setFuelTimeWeight} generating={generating}/>
+      )}
       <MapView startPoint={startPoint} setStartPoint={setStartPoint} endPoint={endPoint} setEndPoint={setEndPoint} setStartLocation={setStartLocation} setEndLocation={setEndLocation} basicRoutePoints={basicRoutePoints} optimizedRoutePoints={optimizedRoutePoints} optimizedRouteDistance={optimizedRouteDistance} optimizedRouteTime={optimizedRouteTime} optimizedRouteFuel={optimizedRouteFuel} optimizedRouteAvgSpeed={optimizedRouteAvgSpeed} routeDistance={routeDistance} duration={duration} overlayReady={overlayReady} overlayDate={overlayDate} overlayHours={overlayHours} exploredBatches={exploredBatches} frontierNodes={frontierNodes} currBestPath={currBestPath} />
     </div>
   )

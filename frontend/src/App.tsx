@@ -72,7 +72,7 @@ function App() {
     const data=JSON.parse(message.data)
       if(data.type==='result'){
         
-        const legs = data.optimizedRoute ?? []
+        const legs = data.optimizedRouteLegs ?? []
 
         const optimizedDistance = legs.reduce((sum: number, leg: any) => { return sum + leg.distNm},0)
         const optimizedTime = legs.reduce((sum: number, leg: any) => { return sum + leg.timeH},0)

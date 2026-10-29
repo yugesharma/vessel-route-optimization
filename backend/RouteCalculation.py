@@ -8,6 +8,7 @@ from math import floor
 import heapq
 import numpy as np
 import time
+from itertools import pairwise
 
 geod = Geod(ellps="WGS84")
 
@@ -58,7 +59,7 @@ def setup(baseRoute,startPoint, endPoint,dateTime,speeds,distanceWeight,fuelTime
     return navGrid, environmentDataService, startNode, endNode, t0, costMin
 
 # default prices: VLSFO ~600 $/t, VLCC time charter ~40k $/day (~1700 $/h)
-def calculateOptimizedRoute(baseRoute,startPoint, endPoint, dateTime, distanceWeight=1.0, fuelTimeWeight=0.5, priceFuel=600.0, priceTime=1700.0, onProgress=None):
+def calculateOptimizedRoute(baseRoute,startPoint, endPoint, dateTime, distanceWeight=1.0, fuelTimeWeight=0.5, priceFuel=600.0, priceTime=1700.0, onProgress=None, maxWaveHeight=8.0):
     speeds=[6,8,10,12,14]
     timeBinSize=3
     start_time = time.time()
@@ -67,7 +68,7 @@ def calculateOptimizedRoute(baseRoute,startPoint, endPoint, dateTime, distanceWe
         timeBinSize=timeBinSize, priceFuel=priceFuel, priceTime=priceTime)
     end_time = time.time()
     print(f"Time taken to setup: {end_time - start_time} seconds")
-
+    vsl.maxWaveHeight = maxWaveHeight
     start_time = time.time()
     goalKey, g, parents = aStar(startNode, endNode, t0, vsl, speeds, navGrid, environmentDataService,
                                 costMin, timeBinSize, distanceWeight=distanceWeight, fuelTimeWeight=fuelTimeWeight,
@@ -76,7 +77,14 @@ def calculateOptimizedRoute(baseRoute,startPoint, endPoint, dateTime, distanceWe
     print(f"Time taken to calculate route: {end_time - start_time} seconds")
     if goalKey is None:
         return None 
-    return reconstructPath(parents, goalKey, navGrid, t0) 
+    legs=reconstructPath(parents, goalKey, navGrid, t0) 
+    totalDistance=sum(leg["distNm"] for leg in legs)
+    totalTime=sum(leg["timeH"] for leg in legs)
+    totalFuel=sum(leg["fuelKg"] for leg in legs)
+    avgSpeed=totalDistance/totalTime
+    basicRouteFuel,unsafe,unfeasible,basicRouteTime=getBasicRouteFuel(baseRoute,avgSpeed,t0,environmentDataService,maxWaveHeight,navGrid)
+    print(f"Basic route fuel: {basicRouteFuel}, unsafe: {unsafe}, unfeasible: {unfeasible}, basic route time: {basicRouteTime}")
+    return legs, totalDistance, totalTime, totalFuel, basicRouteFuel, unsafe, unfeasible, basicRouteTime
 
 
 def neighbors(node, departureTime,navGrid,speeds):
@@ -211,4 +219,33 @@ def reconstructPath(parents, goalKey, navGrid, t0):
                  "arrivalTime":t0,"distNm":0.0,"timeH":0.0,"fuelKg":0.0})
     legs.reverse()
     return legs
+
+def getBasicRouteFuel(baseRoute,speedKn,t0,environmentDataService,maxWaveHeight,navGrid):
+    coords=baseRoute["geometry"]["coordinates"]
+    finerCoords=[]
+    for (lon1, lat1), (lon2, lat2) in pairwise(coords):
+        _,_,dist=geod.inv(lon1,lat1,lon2,lat2)
+        finerCoords.append((lon1,lat1))
+        n=int(dist/1852/30)
+        if n > 0:
+            finerCoords+=geod.npts(lon1,lat1,lon2,lat2,n)
+    finerCoords.append(tuple(coords[-1]))
+
+    t,fuel,unsafe, unfeasible=t0,0.0,0.0,0.0
+    for (lon1, lat1), (lon2, lat2) in pairwise(finerCoords):
+        hdg,_,dist=geod.inv(lon1,lat1,lon2,lat2)
+        dist=dist/1852
+        timeH=dist/speedKn
+        wDep=environmentDataService.weatherAt(navGrid.snapToNode((lon1,lat1)),t)
+        wArr=environmentDataService.weatherAt(navGrid.snapToNode((lon2,lat2)),t+timeH)
+        if max(wDep["Hs"],wArr["Hs"]) >= maxWaveHeight:
+            unsafe+=dist
+        fuelDep=vsl.legFuel(speedKn,hdg,timeH,wDep)
+        fuelArr=vsl.legFuel(speedKn,hdg,timeH,wArr)
+        if fuelDep is None or fuelArr is None:
+            unfeasible+=dist
+        else:
+            fuel+=(fuelDep+fuelArr)/2
+        t+=timeH
+    return fuel,unsafe,unfeasible,t
 

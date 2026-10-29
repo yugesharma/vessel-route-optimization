@@ -2,7 +2,7 @@
 
 import asyncio
 from environmentDataService import getWeatherData, DATE_STRING, FORECAST_HOURS, VALID_HOURS
-from RouteCalculation import calculateOptimizedRoute, getBaseRoute
+from RouteCalculation import calculateOptimizedRoute, getBaseRoute, getBasicRouteFuel
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -70,16 +70,17 @@ def runRoute(request: RouteRequest, onProgress=None):
     startPoint = (request.startPoint[1], request.startPoint[0])
     endPoint = (request.endPoint[1], request.endPoint[0])
     baseRoute = getBaseRoute(startPoint, endPoint)
-    optimizedRoute  = calculateOptimizedRoute(
+    optimizedRouteLegs, totalDistance, totalTime, totalFuel, basicRouteFuel, unsafe, unfeasible, basicRouteTime = calculateOptimizedRoute(
         baseRoute,startPoint, endPoint, request.dateTime, distanceWeight=request.distanceWeight,
         fuelTimeWeight=request.fuelTimeWeight, onProgress=onProgress)
-    return {"optimizedRoute": optimizedRoute}
+    return {"optimizedRouteLegs": optimizedRouteLegs, "optimizedRouteDistance": totalDistance, "optimizedRouteTime": totalTime, "optimizedRouteFuel": totalFuel, "basicRouteFuel": basicRouteFuel, "basicRouteUnsafe": unsafe, "basicRouteUnfeasible": unfeasible, "basicRouteTime": basicRouteTime}
 
 @app.get("/baseRoute")
 async def baseRoute(startPointLat: float, startPointLon: float, endPointLat: float, endPointLon: float):
     startPoint = (startPointLon, startPointLat)
     endPoint = (endPointLon, endPointLat)
-    return {"baseRoute": getBaseRoute(startPoint, endPoint)}
+    baseRoute = getBaseRoute(startPoint, endPoint)
+    return {"baseRoute": baseRoute}
 
 @app.post("/optimizedRoute")
 async def calculate_route(request: RouteRequest):

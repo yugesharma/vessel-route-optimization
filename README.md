@@ -29,7 +29,6 @@ start, end, departure time
 
 The state includes arrival time because the cost of leaving a node depends on when the ship gets there. Wave and wind resistance are floored at zero, so no leg is cheaper than calm water and the heuristic never overestimates.
 
-`backend/PROJECT.md` has the full design: conventions, data structures, cost formulas and known gaps.
 
 ## Stack
 

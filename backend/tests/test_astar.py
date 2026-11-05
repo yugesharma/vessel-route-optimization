@@ -32,7 +32,8 @@ def run_astar(start,goal,badWeatherNodes,n=7):
     LE=60.0,  
     eta=0.70,  
     sfoc=175.0,  
-    mcrKw=27000.0,  
+    mcrKw=27000.0, 
+    speeds=[6,8,10,12,14] 
 )
 
     costMin=min(legCost(1, testVessel.calmWaterFuelPerNM(speed), 1/speed, 1, 0.5, 600.0, 1700.0)

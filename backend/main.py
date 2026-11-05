@@ -2,7 +2,8 @@
 
 import asyncio
 from environmentDataService import getWeatherData, DATE_STRING, FORECAST_HOURS, VALID_HOURS
-from RouteCalculation import calculateOptimizedRoute, getBaseRoute, getBasicRouteFuel
+from route_setup import getBaseRoute
+from RouteCalculation import calculateOptimizedRoute, getBasicRouteFuel
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv

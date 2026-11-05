@@ -1,74 +1,30 @@
-from classes.route import Route
-from classes.navGrid import NavGrid
+from route_setup import setup
 from classes.vessel import vsl
-from environmentDataService import EnvironmentDataService
-from geographicDataService import GeographicDataService
 from pyproj import Geod
 from math import floor
 import heapq
-import numpy as np
 import time
 from itertools import pairwise
 
 geod = Geod(ellps="WGS84")
 
-def getBaseRoute(startPoint, endPoint):
-    route = Route(startPoint, endPoint)
-    route.getBaseRoute()
-    return route.baseRoute
-
-def setup(baseRoute,startPoint, endPoint,dateTime,speeds,distanceWeight,fuelTimeWeight,timeBinSize,priceFuel,priceTime):
-    navGrid = NavGrid()
-    navGrid.buildCorridor(baseRoute)
-    bbox = navGrid.getCorridorBoundingBox()
-
-    # cropped weather data for the route corridor
-    environmentDataService = EnvironmentDataService()
-    environmentDataService.getWeatherData(bbox)
-
-    # cropped land/water mask for the route corridor
-    geographicDataService = GeographicDataService()
-    geographicDataService.getSeaMask(bbox)
-    
-
-    # build valid navigation grid: nodes inside the corridor, over sea, with wave data
-    navGrid.buildGrid(geographicDataService.seaMask, environmentDataService.weatherField)
-
-    startNode = navGrid.snapToNode(startPoint)
-    endNode = navGrid.snapToNode(endPoint)
-
-    startWeather = environmentDataService.weatherAt(startNode, 0)
-    endWeather = environmentDataService.weatherAt(endNode, 0)
-
-    t0=(np.datetime64(dateTime) - environmentDataService.getCycleStart()) / np.timedelta64(1, "h")
-
-    # cheapest possible cost per nm: calm water (legFuel never goes below it), same formula as edgeCost
-    costMin=min(legCost(1, vsl.calmWaterFuelPerNM(speed), 1/speed, distanceWeight, fuelTimeWeight, priceFuel, priceTime)
-                for speed in speeds)
-
-
-    print('start wave height:', startWeather["Hs"])
-    print('end wave height:', endWeather["Hs"])
-
-    # print(bbox)
-    # print(environmentDataService.weatherField)
-    # print(geographicDataService.seaMask)
-    # print("Valid nodes:", len(navGrid.validNodes))
-
-
-    return navGrid, environmentDataService, startNode, endNode, t0, costMin
 
 # default prices: VLSFO ~600 $/t, VLCC time charter ~40k $/day (~1700 $/h)
 def calculateOptimizedRoute(baseRoute,startPoint, endPoint, dateTime, distanceWeight=1.0, fuelTimeWeight=0.5, priceFuel=600.0, priceTime=1700.0, onProgress=None, maxWaveHeight=8.0):
-    speeds=[6,8,10,12,14]
+    speeds=vsl.speeds
     timeBinSize=3
     start_time = time.time()
-    navGrid, environmentDataService, startNode, endNode, t0, costMin = setup(
+    navGrid, environmentDataService, startNode, endNode, t0 = setup(
         baseRoute, startPoint, endPoint, dateTime, speeds, distanceWeight=distanceWeight, fuelTimeWeight=fuelTimeWeight,
         timeBinSize=timeBinSize, priceFuel=priceFuel, priceTime=priceTime)
     end_time = time.time()
     print(f"Time taken to setup: {end_time - start_time} seconds")
     vsl.maxWaveHeight = maxWaveHeight
+    
+    # cheapest possible cost per nm: calm water (legFuel never goes below it), same formula as edgeCost
+    costMin=min(legCost(1, vsl.calmWaterFuelPerNM(speed), 1/speed, distanceWeight, fuelTimeWeight, priceFuel, priceTime)
+                for speed in speeds)
+
     start_time = time.time()
     goalKey, g, parents = aStar(startNode, endNode, t0, vsl, speeds, navGrid, environmentDataService,
                                 costMin, timeBinSize, distanceWeight=distanceWeight, fuelTimeWeight=fuelTimeWeight,

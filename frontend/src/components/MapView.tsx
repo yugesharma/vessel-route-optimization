@@ -1,4 +1,4 @@
-import { MapContainer, TileLayer, useMapEvents, CircleMarker, Polyline, useMap, ImageOverlay } from 'react-leaflet'
+import { MapContainer, TileLayer, useMapEvents, CircleMarker, Polyline, useMap, ImageOverlay, Pane } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useState, useEffect, useRef, memo } from 'react'
 import WeatherSlider from './WeatherSlider'
@@ -129,8 +129,10 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint,
     exploredBatches.map((batch,i)=> <ExploredBatch key={i} nodes={batch} />)
   )}
 
-  {currBestPath && currBestPath.length > 0 && (
+{currBestPath && currBestPath.length > 0 && (
+  <Pane name='bestPath' style={{zIndex:450}}>
   <Polyline positions={currBestPath} pathOptions={{ color: 'green',weight: 3 }} />
+  </Pane>
   )}
 
   

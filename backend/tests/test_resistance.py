@@ -18,6 +18,7 @@ testVessel = Vessel(
     eta=0.70,  
     sfoc=175.0,  
     mcrKw=27000.0,  
+    speeds=[6,8,10,12,14]
 )
 
 def test_calmWaterResistance():

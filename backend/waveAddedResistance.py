@@ -3,14 +3,13 @@
 # R_AW            = 2 * integral(Rwave/zetaA^2 * S(w) dw)
 # Valid: 75 <= Lpp <= 400 m, 5 <= L/B <= 8, 2 <= B/T <= 8, 0.52 <= CB <= 0.88, 0.09 <= Fr <= 0.30.
 
-import math
-
 import numpy as np
+import bisect, math
 
 g = 9.81
 RHO = 1025.0
 OMEGA = np.linspace(0.1, 3.0, 300)  # rad/s
-
+TP = np.arange(1.0, 25.01, 0.25)
 
 def jonswap(omega, Hs, Tp, gamma=3.3):
     # DNV-RP-C205 Pg 64, JONSWAP; gamma=3.3 is the standard North Sea value
@@ -18,7 +17,6 @@ def jonswap(omega, Hs, Tp, gamma=3.3):
     sigma = np.where(omega <= wp, 0.07, 0.09)
     peak = gamma ** np.exp(-((omega - wp) ** 2) / (2 * sigma**2 * wp**2))
     return (1 - 0.287 * np.log(gamma)) * 5 / 16 * Hs**2 * wp**4 * omega**-5 * np.exp(-1.25 * (wp / omega) ** 4) * peak
-
 
 def snnmTransfer(omega, alpha, vessel, V):
     """Rwave / zetaA^2 in regular waves [N/m^2]. alpha in [0, pi], 0 = head waves."""
@@ -79,7 +77,6 @@ def snnmTransfer(omega, alpha, vessel, V):
 
     return R_AWM + R_AWR
 
-
 def waveAddedResistance(vessel, Hs, Tp, relWaveHeading, speedMs):
     """Mean added resistance in irregular waves [N]. relWaveHeading = waveDirFrom - heading, 0 = head seas."""
     if Hs <= 0 or Tp <= 0:
@@ -90,3 +87,33 @@ def waveAddedResistance(vessel, Hs, Tp, relWaveHeading, speedMs):
     # may be slightly negative in stern-quarter/following seas (waves push the ship); not clamped, like wind
     return float(2 * np.trapezoid(R * jonswap(OMEGA, Hs, Tp), OMEGA))
 
+def buildT(vsl):
+    E1=math.degrees(vsl.getEntranceRunAngles()[0])
+    ALPHA=sorted(set(range(0,181)) | {E1-0.01,E1+0.01})
+    T={}
+
+    S1=np.array([jonswap(OMEGA,1.0,tp) for tp in TP])
+
+    for kn in vsl.speeds:
+        V=kn*0.5144
+        tbl=np.empty((len(ALPHA),len(TP)))
+        for i,a in enumerate(ALPHA):
+            R=snnmTransfer(OMEGA,math.radians(a),vsl,V)
+            tbl[i]=2*np.trapezoid(R*S1,OMEGA,axis=1)
+        T[kn]=tbl
+    
+    return T,ALPHA
+    
+def lookupT(vsl,tp,relWaveHeading,speedKts):
+    T=vsl.waveResistanceTable
+    ALPHA=vsl.ALPHA
+    tp=min(max(tp,TP[0]),TP[-1])
+    currTable=T[speedKts]
+    alpha = abs((relWaveHeading + 180) % 360 - 180)
+    j=min(bisect.bisect_right(ALPHA,alpha)-1,len(ALPHA)-2)
+    i=min(int((tp-TP[0])/0.25),len(TP)-2)
+    deltaTp=(tp-(1+i*0.25))/0.25
+    r1=currTable[j,i]+(currTable[j,i+1]-currTable[j,i])*deltaTp
+    r2=currTable[j+1,i]+(currTable[j+1,i+1]-currTable[j+1,i])*deltaTp
+    res=r1+(r2-r1)*((alpha-ALPHA[j])/(ALPHA[j+1]-ALPHA[j]))
+    return res

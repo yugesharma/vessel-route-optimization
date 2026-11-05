@@ -12,6 +12,7 @@ import requests
 from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, WebSocket
 from contextlib import asynccontextmanager
+from fastapi import HTTPException
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -60,6 +61,7 @@ class RouteRequest(BaseModel):
     windWeight: float
     waveWeight: float
     fuelTimeWeight: float
+    maxWaveHeight: float
 
 
 @app.get("/geocode")
@@ -71,9 +73,14 @@ def runRoute(request: RouteRequest, onProgress=None):
     startPoint = (request.startPoint[1], request.startPoint[0])
     endPoint = (request.endPoint[1], request.endPoint[0])
     baseRoute = getBaseRoute(startPoint, endPoint)
-    optimizedRouteLegs, totalDistance, totalTime, totalFuel, basicRouteFuel, unsafe, unfeasible, basicRouteTime = calculateOptimizedRoute(
+    result = calculateOptimizedRoute(
         baseRoute,startPoint, endPoint, request.dateTime, distanceWeight=request.distanceWeight,
-        fuelTimeWeight=request.fuelTimeWeight, onProgress=onProgress)
+        fuelTimeWeight=request.fuelTimeWeight, maxWaveHeight=request.maxWaveHeight, onProgress=onProgress)
+
+    if result is None:
+        raise HTTPException(status_code=422, detail = "No valid route found with the selected constraints")
+    optimizedRouteLegs, totalDistance, totalTime, totalFuel, basicRouteFuel, unsafe, unfeasible, basicRouteTime = result
+    
     return {"optimizedRouteLegs": optimizedRouteLegs, "optimizedRouteDistance": totalDistance, "optimizedRouteTime": totalTime, "optimizedRouteFuel": totalFuel, "basicRouteFuel": basicRouteFuel, "basicRouteUnsafe": unsafe, "basicRouteUnfeasible": unfeasible, "basicRouteTime": basicRouteTime}
 
 @app.get("/baseRoute")

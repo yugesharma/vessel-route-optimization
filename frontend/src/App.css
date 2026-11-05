@@ -295,3 +295,93 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.calculating-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 32px 20px;
+}
+
+.calculating-state p {
+  font-size: 0.9rem;
+  opacity: 0.75;
+  line-height: 1.5;
+}
+
+.boat-scene {
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto;
+}
+
+.boat-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.rocking-boat {
+  transform-box: fill-box;
+  transform-origin: center 80%;
+  animation: boat-rock 3s ease-in-out infinite;
+}
+
+.boat-wave {
+  fill: none;
+  stroke: #60a5fa;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.wave-one {
+  animation: wave-move 3s ease-in-out infinite;
+}
+
+.wave-two {
+  opacity: 0.5;
+  animation: wave-move 3s ease-in-out infinite reverse;
+}
+
+@keyframes boat-rock {
+  0%, 100% {
+    transform: translateY(0) rotate(-3deg);
+  }
+
+  50% {
+    transform: translateY(-5px) rotate(3deg);
+  }
+}
+
+@keyframes wave-move {
+  0%, 100% {
+    transform: translateX(-5px);
+  }
+
+  50% {
+    transform: translateX(5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rocking-boat,
+  .wave-one,
+  .wave-two {
+    animation: none;
+  }
+}
+
+/* Animated boat on map */ 
+.map-boat-icon {
+  background: transparent;
+  border: none;
+}
+
+.map-boat {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

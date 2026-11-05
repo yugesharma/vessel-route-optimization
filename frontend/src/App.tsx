@@ -12,6 +12,7 @@ function App() {
   const [windWeight, setWindWeight] = useState(0.5)
   const [waveWeight, setWaveWeight] = useState(0.5)
   const [fuelTimeWeight, setFuelTimeWeight] = useState(0.5)
+  const [maxWaveHeight, setMaxWaveHeight] = useState(8.0)
   const [startLocation, setStartLocation] = useState('')
   const [endLocation, setEndLocation] = useState('')
   const [basicRoutePoints, setBasicRoutePoints] = useState<[number, number][]>([])
@@ -89,7 +90,7 @@ function App() {
           (leg: any) => [leg.lat, leg.lon] as [number, number])
         
         setOptimizedRoutePoints(optimizedPoints)
-        setDuration(data.basicRoute.properties.duration_hours)
+        setDuration(data.basicRouteTime)
       }
       else if(data.type === 'progress') {
         
@@ -131,7 +132,7 @@ function App() {
     fetchBaseRoute(startPoint, endPoint)
     const ws = new WebSocket('ws://localhost:8000/ws/route')
     ws.onopen = () => {
-      ws.send(JSON.stringify({ startPoint, endPoint, dateTime, distanceWeight, windWeight, waveWeight, fuelTimeWeight }))
+      ws.send(JSON.stringify({ startPoint, endPoint, dateTime, distanceWeight, windWeight, waveWeight, fuelTimeWeight, maxWaveHeight }))
     }
     ws.onmessage = (e)=>handleMessage(e)
     // server closes after the result (or on a crash): clear the search markers either way
@@ -156,11 +157,11 @@ function App() {
   return (
     <div className="app-layout">
       {showResults ? (
-        <ResultsSidebar startPoint={startPoint} endPoint={endPoint} startLocation={startLocation} endLocation={endLocation} dateTime={dateTime} optimizedRouteDistance={optimizedRouteDistance} optimizedRouteTime={optimizedRouteTime} optimizedRouteFuel={optimizedRouteFuel} optimizedRouteAvgSpeed={optimizedRouteAvgSpeed} fuelTimeWeight={fuelTimeWeight} setFuelTimeWeight={setFuelTimeWeight} waveWeight={waveWeight} setWaveWeight={setWaveWeight} generating={generating} generateRoute={generateRoute} onBack={onBack}/>
+        <ResultsSidebar startPoint={startPoint} endPoint={endPoint} startLocation={startLocation} endLocation={endLocation} dateTime={dateTime} optimizedRouteDistance={optimizedRouteDistance} optimizedRouteTime={optimizedRouteTime} optimizedRouteFuel={optimizedRouteFuel} optimizedRouteAvgSpeed={optimizedRouteAvgSpeed} fuelTimeWeight={fuelTimeWeight} setFuelTimeWeight={setFuelTimeWeight} maxWaveHeight={maxWaveHeight} setMaxWaveHeight={setMaxWaveHeight} generating={generating} generateRoute={generateRoute} onBack={onBack}/>
       ) : (
-        <Sidebar startPoint={startPoint} startLocation={startLocation} setStartLocation={setStartLocation} endPoint={endPoint} endLocation={endLocation} setEndLocation={setEndLocation} setDateTime={setDateTime} dateTime={dateTime} distanceWeight={distanceWeight} setDistanceWeight={setDistanceWeight} windWeight={windWeight} setWindWeight={setWindWeight} waveWeight={waveWeight} setWaveWeight={setWaveWeight} handleStartLocationSearch={handleStartLocationChange} handleEndLocationSearch={handleEndLocationChange} generateRoute={generateRoute} routeDistance={routeDistance} duration={duration} fuelTimeWeight={fuelTimeWeight} setFuelTimeWeight={setFuelTimeWeight} generating={generating}/>
+        <Sidebar startPoint={startPoint} startLocation={startLocation} setStartLocation={setStartLocation} endPoint={endPoint} endLocation={endLocation} setEndLocation={setEndLocation} setDateTime={setDateTime} dateTime={dateTime} distanceWeight={distanceWeight} setDistanceWeight={setDistanceWeight} windWeight={windWeight} setWindWeight={setWindWeight} maxWaveHeight={maxWaveHeight} setMaxWaveHeight={setMaxWaveHeight}   handleStartLocationSearch={handleStartLocationChange} handleEndLocationSearch={handleEndLocationChange} generateRoute={generateRoute} routeDistance={routeDistance} duration={duration} fuelTimeWeight={fuelTimeWeight} setFuelTimeWeight={setFuelTimeWeight} generating={generating}/>
       )}
-      <MapView startPoint={startPoint} setStartPoint={setStartPoint} endPoint={endPoint} setEndPoint={setEndPoint} setStartLocation={setStartLocation} setEndLocation={setEndLocation} basicRoutePoints={basicRoutePoints} optimizedRoutePoints={optimizedRoutePoints} optimizedRouteDistance={optimizedRouteDistance} optimizedRouteTime={optimizedRouteTime} optimizedRouteFuel={optimizedRouteFuel} optimizedRouteAvgSpeed={optimizedRouteAvgSpeed} routeDistance={routeDistance} duration={duration} overlayReady={overlayReady} overlayDate={overlayDate} overlayHours={overlayHours} exploredBatches={exploredBatches} frontierNodes={frontierNodes} currBestPath={currBestPath} />
+      <MapView startPoint={startPoint} setStartPoint={setStartPoint} endPoint={endPoint} setEndPoint={setEndPoint} setStartLocation={setStartLocation} setEndLocation={setEndLocation} basicRoutePoints={basicRoutePoints} optimizedRoutePoints={optimizedRoutePoints} optimizedRouteDistance={optimizedRouteDistance} optimizedRouteTime={optimizedRouteTime} optimizedRouteFuel={optimizedRouteFuel} optimizedRouteAvgSpeed={optimizedRouteAvgSpeed} routeDistance={routeDistance} duration={duration} overlayReady={overlayReady} overlayDate={overlayDate} overlayHours={overlayHours} exploredBatches={exploredBatches} frontierNodes={frontierNodes} currBestPath={currBestPath} generating={generating} />
     </div>
   )
 }

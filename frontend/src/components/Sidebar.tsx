@@ -3,10 +3,10 @@ type SidebarProps = {
   endPoint: [number, number] | null
   setDistanceWeight: (value: number) => void
   setWindWeight: (value: number) => void
-  setWaveWeight: (value: number) => void
   distanceWeight: number
   windWeight: number
-  waveWeight: number
+  maxWaveHeight: number
+  setMaxWaveHeight: (value: number) => void
   fuelTimeWeight: number
   setFuelTimeWeight: (value: number) => void
   startLocation: string
@@ -25,7 +25,7 @@ type SidebarProps = {
 
 
 
-function Sidebar({distanceWeight, setDistanceWeight, windWeight, setWindWeight, waveWeight, setWaveWeight, fuelTimeWeight, setFuelTimeWeight, startLocation, endLocation, setStartLocation, setEndLocation, handleStartLocationSearch, handleEndLocationSearch, generateRoute, dateTime, setDateTime, generating}: SidebarProps) {
+function Sidebar({distanceWeight, setDistanceWeight, windWeight, setWindWeight, maxWaveHeight, setMaxWaveHeight, fuelTimeWeight, setFuelTimeWeight, startLocation, endLocation, setStartLocation, setEndLocation, handleStartLocationSearch, handleEndLocationSearch, generateRoute, dateTime, setDateTime, generating}: SidebarProps) {
 
   return (
     <div className="sidebar">
@@ -45,23 +45,6 @@ function Sidebar({distanceWeight, setDistanceWeight, windWeight, setWindWeight, 
 
       <h3>Route Preferences</h3>
 
-    <div className="form-group">
-      <div className="slider-header">
-  <label htmlFor="distanceWeight">Distance Weight:</label>
-  <span className="weight-value">{(distanceWeight * 100).toFixed(0)}%</span>
-  </div>
-        <input type="range" id="distanceWeight" name="distanceWeight" min="0" max="1" step="0.1" value={distanceWeight} onChange={(e) => setDistanceWeight(Number(e.target.value))} />
-      </div>
-  
-
-<div className="form-group">
-       <div className="slider-header">
-  <label htmlFor="windWeight">Wind Weight:</label>
-  <span className="weight-value">{(windWeight * 100).toFixed(0)}%</span>
-  </div>
-        <input type="range" id="windWeight" name="windWeight" min="0" max="1" step="0.1" value={windWeight} onChange={(e) => setWindWeight(Number(e.target.value))} />
-      </div>
-
 <div className="form-group">
     <label htmlFor="fuelTimeWeight">Fuel vs. Time:</label>
 
@@ -74,10 +57,10 @@ function Sidebar({distanceWeight, setDistanceWeight, windWeight, setWindWeight, 
 
 <div className="form-group">   
         <div className="slider-header">
-  <label htmlFor="waveWeight">Wave Weight:</label>
-  <span className="weight-value">{(waveWeight * 100).toFixed(0)}%</span>
+  <label htmlFor="maxWaveHeight">Maximum Wave Height:</label>
+  <span className="weight-value">{maxWaveHeight.toFixed(1)} m</span>
   </div>
-        <input type="range" id="waveWeight" name="waveWeight" min="0" max="1" step="0.1" value={waveWeight} onChange={(e) => setWaveWeight(Number(e.target.value))} />
+        <input type="range" id="maxWaveHeight" name="maxWaveHeight" min="0" max="8.0" step="0.5" value={maxWaveHeight} onChange={(e) => setMaxWaveHeight(Number(e.target.value))} />
       </div>
       
       <button onClick={generateRoute} disabled={generating}>{generating ? 'Calculating...' : 'Calculate Route'}</button>

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, memo } from 'react'
 import WeatherSlider from './WeatherSlider'
 import { Waves } from 'lucide-react'
 import Legend from './Legend'
+import AnimatedMapBoat from './animatedBoat'
 
 type MapClickHandlerProps = {
   onMapClick: (latlng: [number, number]) => void
@@ -44,6 +45,7 @@ type MapViewProps = {
   exploredBatches: [number, number][][]
   frontierNodes: [number, number][]
   currBestPath: [number, number][] | null
+  generating: boolean
 }
 
 const exploredStyle={color:'yellow'}
@@ -79,7 +81,7 @@ function MapUpdater({
 function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, 
   setStartLocation, setEndLocation, basicRoutePoints, optimizedRoutePoints,
   optimizedRouteDistance, optimizedRouteTime, optimizedRouteFuel, optimizedRouteAvgSpeed,
-  routeDistance, duration, overlayReady, overlayDate, overlayHours, exploredBatches, frontierNodes, currBestPath }: MapViewProps) {
+  routeDistance, duration, overlayReady, overlayDate, overlayHours, exploredBatches, frontierNodes, currBestPath, generating }: MapViewProps) {
   const [selectingStart, setSelectingStart] = useState(true)
   const [selectedRoute, setSelectedRoute] = useState<'basic' | 'optimized' | null>(null)
   const hoverRef = useRef<HTMLDivElement>(null)
@@ -135,7 +137,7 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint,
   </Pane>
   )}
 
-  
+  <AnimatedMapBoat basicRoutePoints={basicRoutePoints} exploredBatches={exploredBatches} generating={generating} />
   {startPoint && <CircleMarker center={startPoint} radius={5} pathOptions={{ color: 'red' }} />}
   
   {endPoint && <CircleMarker center={endPoint} radius={5} pathOptions={{ color: 'blue' }} />}

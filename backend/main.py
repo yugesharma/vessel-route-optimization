@@ -57,10 +57,8 @@ class RouteRequest(BaseModel):
     startPoint: tuple[float, float]
     endPoint: tuple[float, float]
     dateTime: str
-    distanceWeight: float
     fuelTimeWeight: float
     maxWaveHeight: float
-
 
 @app.get("/geocode")
 async def geocode(location: str):
@@ -73,7 +71,7 @@ def runRoute(request: RouteRequest, onProgress=None):
     endPoint = (request.endPoint[1], request.endPoint[0])
     baseRoute = getBaseRoute(startPoint, endPoint)
     result = calculateOptimizedRoute(
-        baseRoute,startPoint, endPoint, request.dateTime, distanceWeight=request.distanceWeight,
+        baseRoute,startPoint, endPoint, request.dateTime,
         fuelTimeWeight=request.fuelTimeWeight, maxWaveHeight=request.maxWaveHeight, onProgress=onProgress)
 
     if result is None:

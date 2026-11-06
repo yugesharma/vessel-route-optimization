@@ -1,8 +1,6 @@
 type SidebarProps = {
   startPoint: [number, number] | null
   endPoint: [number, number] | null
-  setDistanceWeight: (value: number) => void
-  distanceWeight: number
   maxWaveHeight: number
   setMaxWaveHeight: (value: number) => void
   fuelTimeWeight: number
@@ -23,7 +21,7 @@ type SidebarProps = {
 
 
 
-function Sidebar({distanceWeight, setDistanceWeight, maxWaveHeight, setMaxWaveHeight, fuelTimeWeight, setFuelTimeWeight, startLocation, endLocation, setStartLocation, setEndLocation, handleStartLocationSearch, handleEndLocationSearch, generateRoute, dateTime, setDateTime, generating}: SidebarProps) {
+function Sidebar({maxWaveHeight, setMaxWaveHeight, fuelTimeWeight, setFuelTimeWeight, startLocation, endLocation, setStartLocation, setEndLocation, handleStartLocationSearch, handleEndLocationSearch, generateRoute, dateTime, setDateTime, generating}: SidebarProps) {
 
   return (
     <div className="sidebar">

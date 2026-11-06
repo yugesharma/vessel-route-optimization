@@ -36,7 +36,5 @@ def build_fake_weather_files():
     except Exception as e:
         print('error: ',e)
 
-
-
 if __name__ =="__main__":
     build_fake_weather_files()

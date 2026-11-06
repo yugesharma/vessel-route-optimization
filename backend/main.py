@@ -58,8 +58,6 @@ class RouteRequest(BaseModel):
     endPoint: tuple[float, float]
     dateTime: str
     distanceWeight: float
-    windWeight: float
-    waveWeight: float
     fuelTimeWeight: float
     maxWaveHeight: float
 
@@ -70,6 +68,7 @@ async def geocode(location: str):
     return {"coordinates": coordinates}
 
 def runRoute(request: RouteRequest, onProgress=None):
+    print(request)
     startPoint = (request.startPoint[1], request.startPoint[0])
     endPoint = (request.endPoint[1], request.endPoint[0])
     baseRoute = getBaseRoute(startPoint, endPoint)

@@ -114,7 +114,8 @@ def aStar(start,goal,t0,vsl,speeds,navGrid,environmentDataService,costMin,timeBi
     exploredNodes=[]
     sentCells=set()  
     expanded=0
-    webSocketFrequency = 20
+    interval = 0.1
+    lastSent=time.monotonic()
 
     while openList:
         f,counter,g,h,currentNode,depTime = heapq.heappop(openList)
@@ -122,13 +123,14 @@ def aStar(start,goal,t0,vsl,speeds,navGrid,environmentDataService,costMin,timeBi
             sentCells.add(currentNode)
             exploredNodes.append([float(c) for c in navGrid.nodeToCoordinates(currentNode)])
         expanded+=1
-      
-        if onProgress and exploredNodes and expanded % webSocketFrequency == 0:
+        now=time.monotonic()
+        if onProgress and exploredNodes and now-lastSent>=interval:
             currBestPath=reconstructPath(parents, currKey, navGrid, t0)
             onProgress({"exploredNodes": exploredNodes,
                         "currBestPath": currBestPath,
                         })
             exploredNodes=[]
+            lastSent=now
         currKey=(currentNode,timeBin(t0,depTime,timeBinSize))
 
         if currKey in bestCost and g > bestCost[currKey]:

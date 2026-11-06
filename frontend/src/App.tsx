@@ -9,8 +9,6 @@ function App() {
   const [startPoint, setStartPoint] = useState<[number, number] | null>(null)
   const [endPoint, setEndPoint] = useState<[number, number] | null>(null)
   const [distanceWeight, setDistanceWeight] = useState(0.5)
-  const [windWeight, setWindWeight] = useState(0.5)
-  const [waveWeight, setWaveWeight] = useState(0.5)
   const [fuelTimeWeight, setFuelTimeWeight] = useState(0.5)
   const [maxWaveHeight, setMaxWaveHeight] = useState(8.0)
   const [startLocation, setStartLocation] = useState('')
@@ -132,7 +130,7 @@ function App() {
     fetchBaseRoute(startPoint, endPoint)
     const ws = new WebSocket('ws://localhost:8000/ws/route')
     ws.onopen = () => {
-      ws.send(JSON.stringify({ startPoint, endPoint, dateTime, distanceWeight, windWeight, waveWeight, fuelTimeWeight, maxWaveHeight }))
+      ws.send(JSON.stringify({ startPoint, endPoint, dateTime, distanceWeight, fuelTimeWeight, maxWaveHeight }))
     }
     ws.onmessage = (e)=>handleMessage(e)
     // server closes after the result (or on a crash): clear the search markers either way
@@ -159,7 +157,7 @@ function App() {
       {showResults ? (
         <ResultsSidebar startPoint={startPoint} endPoint={endPoint} startLocation={startLocation} endLocation={endLocation} dateTime={dateTime} optimizedRouteDistance={optimizedRouteDistance} optimizedRouteTime={optimizedRouteTime} optimizedRouteFuel={optimizedRouteFuel} optimizedRouteAvgSpeed={optimizedRouteAvgSpeed} fuelTimeWeight={fuelTimeWeight} setFuelTimeWeight={setFuelTimeWeight} maxWaveHeight={maxWaveHeight} setMaxWaveHeight={setMaxWaveHeight} generating={generating} generateRoute={generateRoute} onBack={onBack}/>
       ) : (
-        <Sidebar startPoint={startPoint} startLocation={startLocation} setStartLocation={setStartLocation} endPoint={endPoint} endLocation={endLocation} setEndLocation={setEndLocation} setDateTime={setDateTime} dateTime={dateTime} distanceWeight={distanceWeight} setDistanceWeight={setDistanceWeight} windWeight={windWeight} setWindWeight={setWindWeight} maxWaveHeight={maxWaveHeight} setMaxWaveHeight={setMaxWaveHeight}   handleStartLocationSearch={handleStartLocationChange} handleEndLocationSearch={handleEndLocationChange} generateRoute={generateRoute} routeDistance={routeDistance} duration={duration} fuelTimeWeight={fuelTimeWeight} setFuelTimeWeight={setFuelTimeWeight} generating={generating}/>
+        <Sidebar startPoint={startPoint} startLocation={startLocation} setStartLocation={setStartLocation} endPoint={endPoint} endLocation={endLocation} setEndLocation={setEndLocation} setDateTime={setDateTime} dateTime={dateTime} distanceWeight={distanceWeight} setDistanceWeight={setDistanceWeight} maxWaveHeight={maxWaveHeight} setMaxWaveHeight={setMaxWaveHeight}   handleStartLocationSearch={handleStartLocationChange} handleEndLocationSearch={handleEndLocationChange} generateRoute={generateRoute} routeDistance={routeDistance} duration={duration} fuelTimeWeight={fuelTimeWeight} setFuelTimeWeight={setFuelTimeWeight} generating={generating}/>
       )}
       <MapView startPoint={startPoint} setStartPoint={setStartPoint} endPoint={endPoint} setEndPoint={setEndPoint} setStartLocation={setStartLocation} setEndLocation={setEndLocation} basicRoutePoints={basicRoutePoints} optimizedRoutePoints={optimizedRoutePoints} optimizedRouteDistance={optimizedRouteDistance} optimizedRouteTime={optimizedRouteTime} optimizedRouteFuel={optimizedRouteFuel} optimizedRouteAvgSpeed={optimizedRouteAvgSpeed} routeDistance={routeDistance} duration={duration} overlayReady={overlayReady} overlayDate={overlayDate} overlayHours={overlayHours} exploredBatches={exploredBatches} frontierNodes={frontierNodes} currBestPath={currBestPath} generating={generating} />
     </div>

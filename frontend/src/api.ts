@@ -4,8 +4,8 @@ const api = axios.create({
   baseURL: 'http://localhost:8000',
 })
 
-export function calculateOptimizedRoute(startPoint: [number, number], endPoint: [number, number], dateTime: string, distanceWeight: number, windWeight: number, waveWeight: number, fuelTimeWeight: number) {
-  return api.post('/optimizedRoute', { startPoint, endPoint, dateTime, distanceWeight, windWeight, waveWeight, fuelTimeWeight })
+export function calculateOptimizedRoute(startPoint: [number, number], endPoint: [number, number], dateTime: string, distanceWeight: number, fuelTimeWeight: number, maxWaveHeight: number) {
+  return api.post('/optimizedRoute', { startPoint, endPoint, dateTime, distanceWeight, fuelTimeWeight, maxWaveHeight })
 }
 
 export function getBaseRoute(startPoint: [number, number], endPoint: [number, number]) {

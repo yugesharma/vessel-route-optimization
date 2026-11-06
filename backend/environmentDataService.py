@@ -49,7 +49,7 @@ class EnvironmentDataService:
         self.arrays = {v: croppedWeather[v].values for v in ("swh", "perpw", "dirpw", "ws", "wdir")}
 
         return self.weatherField, self.validHours
-    
+        
     def weatherAt(self, node, t):
         row, col = node
         s = min(max(round(t / 3), 0), len(self.stepHours) - 1)

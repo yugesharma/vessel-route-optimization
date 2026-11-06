@@ -9,9 +9,6 @@ class Route:
         self.distance = 0
         self.averageSpeed = 0
         self.totalFuel=0
-        self.distanceWeight=0
-        self.waveWeight=0
-        self.windWeight=0
 
     def getStartPoint(self):
         return self.startPoint

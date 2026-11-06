@@ -42,7 +42,6 @@ class EnvironmentDataService:
             latitude=slice(bbox["toplat"], bbox["bottomlat"]),
             longitude=slice(bbox["leftlon"], bbox["rightlon"])
             )
-        # calm cells (Hs < ~0.25 m) have Hs but no wave period/direction; wave resistance ~ Hs^2 so any valid value works
         croppedWeather = croppedWeather.assign(perpw=croppedWeather.perpw.fillna(5.0), dirpw=croppedWeather.dirpw.fillna(0.0))
 
         self.weatherField = croppedWeather

@@ -25,6 +25,7 @@ function MapClickHandler({onMapClick, onHover}: MapClickHandlerProps) {
 }
 
 type MapViewProps = {
+  showResults: boolean
   startPoint: [number, number] | null
   endPoint: [number, number] | null
   setStartPoint: (point: [number, number] | null) => void
@@ -78,7 +79,7 @@ function MapUpdater({
   return null
 }
 
-function MapView({ startPoint, endPoint, setStartPoint, setEndPoint, 
+function MapView({showResults, startPoint, endPoint, setStartPoint, setEndPoint, 
   setStartLocation, setEndLocation, basicRoutePoints, optimizedRoutePoints,
   optimizedRouteDistance, optimizedRouteTime, optimizedRouteFuel, optimizedRouteAvgSpeed,
   routeDistance, duration, overlayReady, overlayDate, overlayHours, exploredBatches, frontierNodes, currBestPath, generating }: MapViewProps) {
@@ -89,6 +90,8 @@ function MapView({ startPoint, endPoint, setStartPoint, setEndPoint,
   const [showWaveOverlay, setShowWaveOverlay] = useState(true)
 
   const handleMapClick = (latlng: [number, number]) => {
+    if (showResults || generating) return 
+    
     if (selectingStart) {
       setStartPoint(latlng)
       setSelectingStart(false)

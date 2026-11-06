@@ -97,6 +97,10 @@ function App() {
           setCurrBestPath(data.currBestPath)
         }
       }
+      else if (data.type === 'error') {
+        alert(data.message)
+        setGenerating(false)
+      }
     }
   
 
@@ -125,6 +129,7 @@ function App() {
     setOptimizedRoutePoints([])
     setShowResults(true)
 
+    setExploredBatches([])
     setGenerating(true)
     fetchBaseRoute(startPoint, endPoint)
     const ws = new WebSocket('ws://localhost:8000/ws/route')
@@ -158,7 +163,7 @@ function App() {
       ) : (
         <Sidebar startPoint={startPoint} startLocation={startLocation} setStartLocation={setStartLocation} endPoint={endPoint} endLocation={endLocation} setEndLocation={setEndLocation} setDateTime={setDateTime} dateTime={dateTime} maxWaveHeight={maxWaveHeight} setMaxWaveHeight={setMaxWaveHeight}   handleStartLocationSearch={handleStartLocationChange} handleEndLocationSearch={handleEndLocationChange} generateRoute={generateRoute} routeDistance={routeDistance} duration={duration} fuelTimeWeight={fuelTimeWeight} setFuelTimeWeight={setFuelTimeWeight} generating={generating}/>
       )}
-      <MapView startPoint={startPoint} setStartPoint={setStartPoint} endPoint={endPoint} setEndPoint={setEndPoint} setStartLocation={setStartLocation} setEndLocation={setEndLocation} basicRoutePoints={basicRoutePoints} optimizedRoutePoints={optimizedRoutePoints} optimizedRouteDistance={optimizedRouteDistance} optimizedRouteTime={optimizedRouteTime} optimizedRouteFuel={optimizedRouteFuel} optimizedRouteAvgSpeed={optimizedRouteAvgSpeed} routeDistance={routeDistance} duration={duration} overlayReady={overlayReady} overlayDate={overlayDate} overlayHours={overlayHours} exploredBatches={exploredBatches} frontierNodes={frontierNodes} currBestPath={currBestPath} generating={generating} />
+      <MapView showResults={showResults} startPoint={startPoint} setStartPoint={setStartPoint} endPoint={endPoint} setEndPoint={setEndPoint} setStartLocation={setStartLocation} setEndLocation={setEndLocation} basicRoutePoints={basicRoutePoints} optimizedRoutePoints={optimizedRoutePoints} optimizedRouteDistance={optimizedRouteDistance} optimizedRouteTime={optimizedRouteTime} optimizedRouteFuel={optimizedRouteFuel} optimizedRouteAvgSpeed={optimizedRouteAvgSpeed} routeDistance={routeDistance} duration={duration} overlayReady={overlayReady} overlayDate={overlayDate} overlayHours={overlayHours} exploredBatches={exploredBatches} frontierNodes={frontierNodes} currBestPath={currBestPath} generating={generating} />
     </div>
   )
 }

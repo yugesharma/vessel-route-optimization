@@ -75,9 +75,10 @@ def runRoute(request: RouteRequest, onProgress=None):
         fuelTimeWeight=request.fuelTimeWeight, maxWaveHeight=request.maxWaveHeight, onProgress=onProgress)
 
     if result is None:
-        raise HTTPException(status_code=422, detail = "No valid route found with the selected constraints")
+        raise ValueError("No valid route found with the selected constraints")
+        #raise HTTPException(status_code=422, detail = "No valid route found with the selected constraints")
     optimizedRouteLegs, totalDistance, totalTime, totalFuel, basicRouteFuel, unsafe, unfeasible, basicRouteTime = result
-    
+
     return {"optimizedRouteLegs": optimizedRouteLegs, "optimizedRouteDistance": totalDistance, "optimizedRouteTime": totalTime, "optimizedRouteFuel": totalFuel, "basicRouteFuel": basicRouteFuel, "basicRouteUnsafe": unsafe, "basicRouteUnfeasible": unfeasible, "basicRouteTime": basicRouteTime}
 
 @app.get("/baseRoute")
@@ -94,16 +95,25 @@ async def calculate_route(request: RouteRequest):
 @app.websocket("/ws/route")
 async def route_websocket(websocket: WebSocket):
     await websocket.accept()
+
     request = RouteRequest(**await websocket.receive_json())
+
+    print("WebSocket received route request", flush=True)
+
     loop = asyncio.get_running_loop()
 
     # A* runs in a worker thread
     def onProgress(snapshot):
         asyncio.run_coroutine_threadsafe(websocket.send_json({"type": "progress", **snapshot}), loop).result()
 
-    result = await asyncio.to_thread(runRoute, request, onProgress)
-    await websocket.send_json({"type": "result", **result})
-    await websocket.close()
+    try:
+        result = await asyncio.to_thread(runRoute, request, onProgress)
+        await websocket.send_json({"type": "result", **result})
+    
+    except ValueError as e:
+            await websocket.send_json({"type": "error", "message": str(e)})
+    finally:
+            await websocket.close()
 
 @app.get("/overlays")
 def overlays():

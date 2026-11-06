@@ -199,6 +199,28 @@
   );
 }
 
+.sidebar .results-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.sidebar .results-actions button {
+  flex: 1;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sidebar .results-actions button:first-child {
+  background-color: #009688;
+  color: white;
+}
+
 .results-sidebar {
   padding: 24px;
   overflow-y: auto;

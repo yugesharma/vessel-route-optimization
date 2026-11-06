@@ -58,8 +58,9 @@ function Sidebar({maxWaveHeight, setMaxWaveHeight, fuelTimeWeight, setFuelTimeWe
   </div>
         <input type="range" id="maxWaveHeight" name="maxWaveHeight" min="0" max="8.0" step="0.5" value={maxWaveHeight} onChange={(e) => setMaxWaveHeight(Number(e.target.value))} />
       </div>
-      
+       <div className="results-actions">
       <button onClick={generateRoute} disabled={generating}>{generating ? 'Calculating...' : 'Calculate Route'}</button>
+    </div>
     </div>
   )
 }

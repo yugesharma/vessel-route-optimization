@@ -49,5 +49,32 @@ def storm_route():
         mp.setattr(environmentDataService,"getWeatherForecast",lambda weather_dir:stormWeatherPath)
         return runRoute(routeRequest)
 
+
+@pytest.fixture(scope="module")
+def land_avoidance_route():
+    routeRequest=RouteRequest(startPoint=(36.6, -6.8),endPoint=(36.5, -4.4),dateTime='2026-01-01T00:01',fuelTimeWeight=0.5,maxWaveHeight=6.0)
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(environmentDataService,"getWeatherForecast",lambda weather_dir:calmWeatherPath)
+        return runRoute(routeRequest)
+
+@pytest.fixture
+def calm_weather_service(monkeypatch):
+    monkeypatch.setattr(environmentDataService,"getWeatherForecast",lambda weather_dir:calmWeatherPath)
+
+    service = environmentDataService.EnvironmentDataService()
+
+    bbox = {
+        "toplat": 38,
+        "bottomlat": 35,
+        "leftlon": -8,
+        "rightlon": -4
+    }
+
+    service.getWeatherData(bbox)
+
+    return service
+
 if __name__ =="__main__":
     build_fake_weather_files()
+
+

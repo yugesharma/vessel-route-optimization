@@ -288,9 +288,14 @@
 
 .results-sidebar .results-actions {
   display: flex;
-  justify-content: space-between;
-  gap: 16px;
+  flex-direction: column;
+  gap: 12px;
   margin-top: 20px;
+}
+
+.results-sidebar .route-buttons {
+  display: flex;
+  gap: 16px;
 }
 
 .results-sidebar .results-actions button {
@@ -406,4 +411,29 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.results-sidebar .results-actions .download-menu > button {
+  width: 100%;
+  background-color: white;
+  color: #009688;
+  border: 1px solid #009688;
+}
+
+.results-sidebar .download-options {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.results-sidebar .results-actions .download-options button {
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  background-color: #e0f2f1;
+  color: #00695c;
+}
+
+.results-sidebar .results-actions .download-options button:hover {
+  background-color: #b2dfdb;
 }

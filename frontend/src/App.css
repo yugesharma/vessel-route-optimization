@@ -31,17 +31,53 @@
 
 .form-group label {
   margin-bottom: 6px;
+  color: var(--text-h);
 }
 
 .form-group input {
   width: 100%;
   padding: 8px;
   box-sizing: border-box;
+  background-color: var(--code-bg);
+  color: var(--text-h);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.form-group input::placeholder {
+  color: var(--text);
+  opacity: 0.8;
+}
+
+.form-group input:hover {
+  border-color: rgba(0, 150, 136, 0.5);
+}
+
+.form-group input:focus-visible {
+  outline: none;
+  border-color: #009688;
+  box-shadow: 0 0 0 3px rgba(0, 150, 136, 0.3);
+}
+
+.form-group input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.7;
 }
 
 .form-group input[type="range"] {
   padding: 5;
   width: 100%;
+  background: transparent;
+  border: none;
+  accent-color: #009688;
+  cursor: pointer;
+}
+
+.form-group input[type="range"]:focus-visible {
+  box-shadow: none;
+  outline: 2px solid rgba(0, 150, 136, 0.6);
+  outline-offset: 2px;
 }
 
 .slider-header {
@@ -52,7 +88,10 @@
 }
 
 .weight-value {
-  border: 1px solid #ccc;
+  border: 1px solid rgba(0, 150, 136, 0.5);
+  background-color: rgba(0, 150, 136, 0.15);
+  color: var(--text-h);
+  font-variant-numeric: tabular-nums;
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 12px;
@@ -64,6 +103,7 @@
 }
 
 .fuel-time-labels {
+  color: var(--text);
   display: flex;
   justify-content: space-between;
   width: 100%;
@@ -92,7 +132,10 @@
   bottom: 0px;
   left: 0px;
   z-index: 1000;
-  background: white;
+  background: var(--bg);
+  color: var(--text-h);
+  box-shadow: inset 0 0 0 1px var(--border), var(--shadow);
+  font-variant-numeric: tabular-nums;
   padding: 5px;
   font-size: 12px;
 }
@@ -108,7 +151,10 @@
   left: 50%;
   transform: translateX(-50%);
   z-index: 1000;
-  background: white;
+  background: var(--bg);
+  color: var(--text-h);
+  box-shadow: inset 0 0 0 1px var(--border), var(--shadow);
+  font-variant-numeric: tabular-nums;
   padding-top: 5px;
   padding-bottom: 2px;
   padding-left: 10px;
@@ -130,8 +176,15 @@
   width: 90%;
   height: 10px;
   border-radius: 5px;
-  background: #f0f0f0;
-  border: 1px solid #ccc;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  accent-color: #009688;
+  cursor: pointer;
+}
+
+.weather-slider-input input[type="range"]:focus-visible {
+  outline: 2px solid rgba(0, 150, 136, 0.6);
+  outline-offset: 2px;
 }
 
 .wave-toggle {
@@ -162,7 +215,9 @@
   bottom: 60px; 
   right: 16px;
   z-index: 1000;
-  background: white;
+  background: var(--bg);
+  color: var(--text-h);
+  box-shadow: inset 0 0 0 1px var(--border), var(--shadow);
   padding: 8px 10px;
   border-radius: 8px;
   font-size: 12px;
@@ -184,6 +239,7 @@
   width: 14px;
   height: 120px;
   border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--border);
   background: linear-gradient(
     to top,
     #30123b 0%,
@@ -235,8 +291,8 @@
 }
 
 .results-sidebar .route-location {
-  background-color: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background-color: var(--code-bg);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 12px;
   margin-bottom: 10px;
@@ -245,7 +301,7 @@
 .results-sidebar .route-location h3 {
   font-size: 12px;
   font-weight: 600;
-  color: #64748b;
+  color: #26a69a;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin: 0 0 4px;
@@ -253,7 +309,7 @@
 
 .results-sidebar .route-location p {
   margin: 4px 0;
-  color: #334155;
+  color: var(--text-h);
   line-height: 1.5;
 }
 
@@ -415,9 +471,14 @@
 
 .results-sidebar .results-actions .download-menu > button {
   width: 100%;
-  background-color: white;
-  color: #009688;
+  background-color: var(--code-bg);
+  color: var(--text-h);
   border: 1px solid #009688;
+  transition: background-color 150ms ease;
+}
+
+.results-sidebar .results-actions .download-menu > button:hover:not(:disabled) {
+  background-color: rgba(0, 150, 136, 0.15);
 }
 
 .results-sidebar .download-options {
@@ -430,10 +491,12 @@
   padding: 6px 10px;
   font-size: 12px;
   font-weight: 500;
-  background-color: #e0f2f1;
-  color: #00695c;
+  background-color: rgba(0, 150, 136, 0.15);
+  color: var(--text-h);
+  box-shadow: inset 0 0 0 1px rgba(0, 150, 136, 0.4);
+  transition: background-color 150ms ease;
 }
 
 .results-sidebar .results-actions .download-options button:hover {
-  background-color: #b2dfdb;
+  background-color: rgba(0, 150, 136, 0.3);
 }

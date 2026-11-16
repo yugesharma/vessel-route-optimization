@@ -14,6 +14,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib.cm as cm
+from geographicDataService import cropToBox
 
 DATE_STRING = date.today().strftime("%Y%m%d")
 FORECAST_HOURS = list(range(0, 7 * 24 + 1, 3))  
@@ -38,10 +39,7 @@ class EnvironmentDataService:
         self.cropWeather(globalWeather, bbox)
 
     def cropWeather(self, globalWeather, bbox):
-        croppedWeather = globalWeather.sel(
-            latitude=slice(bbox["toplat"], bbox["bottomlat"]),
-            longitude=slice(bbox["leftlon"], bbox["rightlon"])
-            )
+        croppedWeather = cropToBox(globalWeather, bbox)
         croppedWeather = croppedWeather.assign(perpw=croppedWeather.perpw.fillna(5.0), dirpw=croppedWeather.dirpw.fillna(0.0))
 
         self.weatherField = croppedWeather

@@ -1,5 +1,24 @@
 import os
+import math
+import numpy as np
 import xarray as xr
+
+RES = 0.25  # grid spacing of the weather file and the sea mask (degrees)
+
+
+def cropToBox(ds, bbox):
+    lon0 = round(float(ds.longitude[0]) / RES) * RES
+    n = ds.sizes["longitude"]
+    cols = np.arange(math.ceil((bbox["leftlon"] - lon0) / RES),
+                     math.floor((bbox["rightlon"] - lon0) / RES) + 1)
+    if round(n * RES) == 360:
+        idx = cols % n                                 
+    else:
+        cols = cols[(cols >= 0) & (cols < n)]
+        idx = cols
+    return (ds.sel(latitude=slice(bbox["toplat"], bbox["bottomlat"]))  
+              .isel(longitude=idx)
+              .assign_coords(longitude=lon0 + cols * RES))
 
 class GeographicDataService:
     def __init__(self):
@@ -17,10 +36,7 @@ class GeographicDataService:
             raise FileNotFoundError(f"Sea mask file not found at {sea_mask_file}")
 
     def cropSeaMask(self, globalSeaMask, bbox):
-        croppedSeaMask = globalSeaMask.sel(
-            latitude=slice(bbox["toplat"], bbox["bottomlat"]),
-            longitude=slice(bbox["leftlon"], bbox["rightlon"])
-        )
+        croppedSeaMask = cropToBox(globalSeaMask, bbox)
 
         self.seaMask = croppedSeaMask
         return self.seaMask

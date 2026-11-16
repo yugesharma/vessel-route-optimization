@@ -38,7 +38,8 @@ start, end
 |---|---|
 | API points | `[lat, lon]` (Leaflet order, as sent by the frontend) |
 | `searoute` points | `[lon, lat]` — swap before calling |
-| Grid node longitude | -180..180 (the dataset's longitude axis is normalised at load), same as the corridor polygon, landmask and output |
+| Longitude on disk | -180..180 (the dataset's longitude axis is normalised at load); API input and RTZ export too |
+| Longitude in a query | continuous along the route, as `searoute` returns it: may run past ±180 (Tokyo → LA is 139.6..241.7, LA → Tokyo is -220.4..-118.3). The corridor polygon, the cropped grids, the nodes and the returned route points all use this frame (see 5.5, "Antimeridian") |
 | Speed | knots in the search; `m/s` for Holtrop (`V_ms = kn × 0.514444`) |
 | Distance | nautical miles |
 | Time `t` | hours since the forecast cycle time |
@@ -85,7 +86,7 @@ If `P_B > 0.9 * mcrKw` the leg is infeasible: `legFuel` returns `None` and the m
 
 ### 5.2 Reference path and corridor (`classes/route.py` `Route`, `classes/navGrid.py` `NavGrid`)
 
-`Route.getBaseRoute()` → `searoute` GeoJSON Feature. `NavGrid.buildCorridor(baseRoute, bufferNm=300)`: reproject the LineString EPSG:4326 → EPSG:3857 (meters), buffer by `bufferNm * 1852`, reproject back. Buffering in degrees would give an uneven physical width. `getCorridorBoundingBox()` returns `leftlon, rightlon, toplat, bottomlat` from the polygon's raw bounds (lon -180..180). The corridor test is done for the whole grid at once in `buildGrid` with `shapely.contains_xy`.
+`Route.getBaseRoute()` → `searoute` GeoJSON Feature. `NavGrid.buildCorridor(baseRoute, bufferNm=300)`: reproject the LineString EPSG:4326 → Mercator with `+over` (`+proj=merc +over +datum=WGS84 +units=m`), buffer by `bufferNm * 1852`, reproject back. Buffering in degrees would give an uneven physical width. `+over` stops PROJ from wrapping longitudes into -180..180: plain EPSG:3857 turns 180.5 into -179.5, the line jumps across the map and the buffer becomes a band around the whole globe. Mercator meters still stretch by 1/cos(lat), so the true half-width is under 300 nm at high latitude (about 193 nm at 50°N). `getCorridorBoundingBox()` returns `leftlon, rightlon, toplat, bottomlat` from the polygon's raw bounds, in the route's continuous frame (may run past ±180). The corridor test is done for the whole grid at once in `buildGrid` with `shapely.contains_xy`.
 
 ### 5.3 Landmask
 
@@ -93,7 +94,7 @@ A boolean raster (`True` = sea) aligned to the GEFS-Wave grid, stored at `data/g
 
 ### 5.4 Weather data
 
-- **Source**: NOMADS `filter_gefs_wave_0p25.pl`, control member `c00`, one file per forecast step, `lev_surface=on`, **global** (no subregion). Downloaded once per forecast cycle (per-step GRIBs in `data/weatherData/steps_{date}/`, skipped if already present) and combined into `data/weatherData/weather_{date}_7day.nc`, so a query makes no API calls. Refresh when a new cycle is published. At load time, normalise the longitude axis to -180..180 and sort it, so it matches the corridor polygon and a crop is a plain slice. Per query, the corridor bounding box crops the global dataset into in-memory numpy arrays (`weatherField`). Variables (all on the same 0.25° grid):
+- **Source**: NOMADS `filter_gefs_wave_0p25.pl`, control member `c00`, one file per forecast step, `lev_surface=on`, **global** (no subregion). Downloaded once per forecast cycle (per-step GRIBs in `data/weatherData/steps_{date}/`, skipped if already present) and combined into `data/weatherData/weather_{date}_7day.nc`, so a query makes no API calls. Refresh when a new cycle is published. At load time, normalise the longitude axis to -180..180 and sort it. Per query, `cropToBox` (5.5, "Antimeridian") crops the global dataset to the corridor bounding box into in-memory numpy arrays (`weatherField`). Variables (all on the same 0.25° grid):
 
 | NOMADS variable | Dataset name | Meaning |
 |---|---|---|
@@ -114,6 +115,13 @@ No graph object is built or stored.
 - **Valid nodes** = corridor test AND sea AND wave data present at every step. Built once per query as a set.
 - **Edges** exist only as the output of `neighbors()`: 8 adjacent cells × `len(speeds)` speeds (~40 moves per node). Edge cost depends on departure time, so a stored edge list would be meaningless.
 - A diagonal move also requires both flanking cells to be sea, so an edge cannot clip a land corner.
+
+**Antimeridian.** Longitude is a circle stored as a line, so any fixed range has a seam; on disk it is at ±180, which a Pacific route crosses. Each query moves the seam to the corridor's own western edge, where the voyage cannot cross it:
+- `searoute` already returns a continuous line (5.2), and the `+over` buffer keeps the corridor in that frame.
+- `cropToBox(ds, bbox)` turns the bbox into column numbers relative to the grid's first column, `ceil((leftlon - lon0) / 0.25) .. floor((rightlon - lon0) / 0.25)`. On a global grid (1440 columns) it takes those columns modulo 1440 with `isel`, so column 1439 (179.75) is followed by column 0 (-180), and relabels them `lon0 + col * 0.25`. Tokyo → LA gives columns 1259..1706, i.e. 1259..1439 then 0..266, labelled 134.75..246.5. Positional indexing avoids comparing the stored float labels (-179.99999199…), and the new labels are exact multiples of 0.25. A regional grid (test fixtures) is cropped without wrapping. Latitude is sliced first; indexing longitude on the full globe takes ~100 s.
+- Weather and sea mask both go through `cropToBox`, so their grids are identical by construction.
+- Nothing downstream changes: `col ± 1` neighbours cross 180 naturally, `contains_xy` compares polygon and nodes in the same frame, and `geod.inv` (snap, bearings, heuristic) gives the same result for -118.3 and 241.7, so API endpoints in -180..180 still snap correctly.
+- Routes not crossing 180 get the same columns as a plain label slice.
 
 ## 6. Search
 
@@ -162,7 +170,9 @@ key        = (node, timeBin(arrival))
 | Function | Parameters | Returns | Does |
 |---|---|---|---|
 | `getWeatherForecast` | `weatherDir` | path to the stored dataset | Returns today's combined file if present; otherwise `downloadWeatherData` (one global file per step, five variables) then `combineWeatherForecast` (concat on step, longitude normalised to -180..180, saved as NetCDF). Run once per cycle. |
-| `EnvironmentDataService.cropWeather` | `globalWeather`, `bbox` | `weatherField` | Slices the global dataset to `bbox` and converts to numpy arrays. Once per query, no network. |
+| `cropToBox` (`geographicDataService.py`) | `ds`, `bbox` | cropped `ds` | Crops a grid to `bbox` by column position; wraps across ±180 on a global grid. Used by both crops below. |
+| `EnvironmentDataService.cropWeather` | `globalWeather`, `bbox` | `weatherField` | `cropToBox`, then converts to numpy arrays. Once per query, no network. |
+| `GeographicDataService.cropSeaMask` | `globalSeaMask`, `bbox` | `seaMask` | `cropToBox`. |
 | `EnvironmentDataService.weatherAt` | `node`, `t` | `{Hs, Tp, waveDir, windSpeed, windDir}` | Nearest step to `t` (clamped), values at `node`. |
 | `EnvironmentDataService.getCycleStart` | — | `datetime64` | Valid time of step 0 (the cycle start). |
 
@@ -268,9 +278,11 @@ averageSpeed = distance / totalTimeH         [kn]
 
 **API**: `POST /route` returns `{basicRoute, optimizedRoute}` — `basicRoute` is the `searoute` GeoJSON Feature, `optimizedRoute` is the point list above (or `null` if no route). The frontend draws `basicRoute` in blue and `optimizedRoute` (`[lat, lon]` per point) in green; the distance and duration shown are still `basicRoute`'s.
 
+**Map across 180°**: route points arrive in the continuous frame (e.g. lon 200). The tile layer wraps (no `noWrap`), so Leaflet draws them in the next world copy as one line; the wave overlay is drawn three times, shifted by -360/0/+360. Clicks and the hover readout use `latlng.wrap()`, so the API gets -180..180. The map fits to the route's points, not the two endpoints (which would fit the long way round), and the start/end markers sit on the route's first/last point so they share its world copy. The RTZ download normalises each waypoint's longitude to -180..180.
+
 ## 7. Known gaps
 
-- **Antimeridian**: corridors crossing 180° are not handled. With the longitude axis normalised to -180..180, the Greenwich crossing (West Africa → Turkey) is now a plain slice, but a corridor that straddles ±180° would still need two slices and a split polygon.
+- **Long voyages are slow**: a Tokyo → LA search (~5000 nm, 12,749 valid nodes, far past the 168 h forecast) had not finished after 42 minutes; Fiji → Samoa (682 nm, also across 180°) takes 3.5 s. Not profiled yet.
 - **Memory**: the global dataset is about 1.2 GB as float32 (721 × 1440 points × 5 variables × 57 steps). Keep it on disk and open it lazily; only the per-query crop goes into memory.
 - **Forecast cycle selection (deferred)**: `DATE_STRING` is today's *local* date and the download assumes today's 00z cycle is complete. Before NOMADS finishes publishing (a few hours after 00z UTC) the download fails with a 404 part-way through; partial steps stay on disk and resume next run. Planned fix:
   1. Compute the cycle date in UTC (`datetime.now(timezone.utc)`), not local time; on EDT the local date lags UTC from 20:00 to midnight.

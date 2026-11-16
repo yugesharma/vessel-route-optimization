@@ -29,7 +29,6 @@ start, end, departure time
 
 The state includes arrival time because the cost of leaving a node depends on when the ship gets there. Wave and wind resistance are floored at zero, so no leg is cheaper than calm water and the heuristic never overestimates.
 
-
 ## Stack
 
 | Part | Tools |
@@ -93,7 +92,7 @@ uv run pytest
 
 - One generic hull and one forecast member; no currents.
 - Weather is taken at the nearest forecast step, and voyages longer than 7 days reuse the last step.
-- Routes crossing the antimeridian (180°) are not supported.
+- Very long voyages (e.g. Tokyo → Los Angeles, ~5000 nm) can take a long time to search.
 
 ## References
 

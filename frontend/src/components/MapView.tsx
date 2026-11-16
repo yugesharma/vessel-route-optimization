@@ -14,10 +14,12 @@ type MapClickHandlerProps = {
 function MapClickHandler({onMapClick, onHover}: MapClickHandlerProps) {
   useMapEvents({
     click: (e) => {
-      onMapClick([e.latlng.lat, e.latlng.lng])
+      const wrappedCoords=e.latlng.wrap()
+      onMapClick([wrappedCoords.lat, wrappedCoords.lng])
     },
     mousemove: (e) => {
-      onHover([e.latlng.lat, e.latlng.lng])
+      const wrappedCoords=e.latlng.wrap()
+      onHover([wrappedCoords.lat, wrappedCoords.lng])
     }
   })
 
@@ -62,19 +64,23 @@ const ExploredBatch=memo(({nodes}:{nodes:[number,number][]})=> (
 function MapUpdater({
   startPoint,
   endPoint,
+  routePoints,
 }: {
   startPoint: [number, number] | null
   endPoint: [number, number] | null
+  routePoints: [number, number][]
 }) {
   const map = useMap()
 
   useEffect(() => {
-    if (startPoint && endPoint) {
+    if (routePoints.length > 0) {
+      map.fitBounds(routePoints)
+    } else if (startPoint && endPoint) {
       map.fitBounds([startPoint, endPoint])
     } else if (startPoint) {
       map.setView(startPoint, 7)
     }
-  }, [startPoint, endPoint, map])
+  }, [startPoint, endPoint, routePoints, map])
 
   return null
 }
@@ -121,10 +127,9 @@ function MapView({showResults, startPoint, endPoint, setStartPoint, setEndPoint,
   <TileLayer
     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    noWrap={true}  
   />
 
-  <MapUpdater startPoint={startPoint} endPoint={endPoint} />
+  <MapUpdater startPoint={startPoint} endPoint={endPoint} routePoints={basicRoutePoints} />
   
   <MapClickHandler onMapClick={handleMapClick} onHover={handleHover} />
 
@@ -141,17 +146,18 @@ function MapView({showResults, startPoint, endPoint, setStartPoint, setEndPoint,
   )}
 
   <AnimatedMapBoat basicRoutePoints={basicRoutePoints} exploredBatches={exploredBatches} generating={generating} />
-  {startPoint && <CircleMarker center={startPoint} radius={5} pathOptions={{ color: 'red' }} />}
-  
-  {endPoint && <CircleMarker center={endPoint} radius={5} pathOptions={{ color: 'blue' }} />}
+  {startPoint && <CircleMarker center={basicRoutePoints[0] ?? startPoint} radius={5} pathOptions={{ color: 'red' }} />}
 
-  {showWaveOverlay && overlayReady && overlayHours && (
-  <ImageOverlay 
-    url={`/wave-overlays/${overlayDate}/${overlayHours[selectedOverlayHour]}.png`}
-    bounds={[[-85.0511, -180.125], [85.0511, 179.875]]}
-    opacity={0.5}
-  />
-)}
+  {endPoint && <CircleMarker center={basicRoutePoints.at(-1) ?? endPoint} radius={5} pathOptions={{ color: 'blue' }} />}
+
+  {showWaveOverlay && overlayReady && overlayHours && [-360, 0, 360].map(shift => (
+    <ImageOverlay
+      key={shift}
+      url={`/wave-overlays/${overlayDate}/${overlayHours[selectedOverlayHour]}.png`}
+      bounds={[[-85.0511, -180.125 + shift], [85.0511, 179.875 + shift]]}
+      opacity={0.5}
+    />
+  ))}
 
   {basicRoutePoints && basicRoutePoints.length > 0 && (
   <Polyline positions={basicRoutePoints} pathOptions={{ color: 'blue', weight: selectedRoute === "basic" ? 7 : 3 }} eventHandlers={{

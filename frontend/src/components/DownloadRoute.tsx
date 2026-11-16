@@ -5,7 +5,8 @@ type DownloadRouteProps={
 
 export function DownloadRoute({routePoints,routeType}:DownloadRouteProps) {
     const waypoints=routePoints.map((wp,i)=>{
-        return `<waypoint id="${i}"> <position lat ="${wp[0].toFixed(6)}" lon ="${wp[1].toFixed(6)}" />
+        const lon=((wp[1]+180)%360+360)%360-180
+        return `<waypoint id="${i}"> <position lat ="${wp[0].toFixed(6)}" lon ="${lon.toFixed(6)}" />
         </waypoint>`;
     }).join('\n');
     const date = new Date();

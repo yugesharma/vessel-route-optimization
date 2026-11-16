@@ -1,11 +1,13 @@
 import geopandas as gpd
 import numpy as np
 import shapely
+from shapely.ops import transform
 from shapely.geometry import shape
-from pyproj import Geod
+from pyproj import Geod, Transformer
 
 geod = Geod(ellps="WGS84")
-
+MERC="+proj=merc +over +datum=WGS84 +units=m"
+toWGS=Transformer.from_crs(MERC, "EPSG:4326", always_xy=True)
 
 class NavGrid:
     def __init__(self):
@@ -19,12 +21,10 @@ class NavGrid:
     def buildCorridor(self, baseRoute, bufferNm=300):
         routeGeometry = shape(baseRoute["geometry"])
         gdf = gpd.GeoDataFrame(geometry=[routeGeometry], crs="EPSG:4326")
-        gdfMerc = gdf.to_crs("EPSG:3857")
+        
+        corridorMerc =gdf.to_crs(MERC).buffer(bufferNm*1852).iloc[0]
 
-        bufferM = bufferNm * 1852
-        corridorMerc = gdfMerc.buffer(bufferM)
-
-        self.corridorPolygon = corridorMerc.to_crs("EPSG:4326").iloc[0]
+        self.corridorPolygon = transform(toWGS.transform, corridorMerc)
 
         return self.corridorPolygon
 

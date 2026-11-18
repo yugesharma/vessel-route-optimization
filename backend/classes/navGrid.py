@@ -66,6 +66,9 @@ class NavGrid:
     
     def snapToNode(self, point):
         lon, lat = point[0], point[1]
+        node = (int(np.abs(self.latitudes - lat).argmin()), int(np.abs(self.longitudes - lon).argmin()))
+        if node in self.validNodes:
+            return node
         minDistance = float("inf")
         closestNode = None
         for node in self.validNodes:

@@ -18,6 +18,7 @@ CX_PROFILE = np.array([1.13, 1.16, 1.12, 1.04, 0.85, 0.65, 0.44, 0.22, 0.02, -0.
                        -0.22, -0.31, -0.44, -0.58, -0.74, -0.89, -0.98, -0.98, -0.87])
 # CX(0) uniform / C'X(0) profile = 0.679 / 0.930 (Fig. 15, the paper's only uniform-profile tanker value, ballast draught)
 CX0_UNIFORM = 0.679 / 0.930 * float(CX_PROFILE[0])
+_CX = CX_PROFILE.tolist()  
 
 
 def windResistance(vessel, windSpeedMs, windDirFrom, headingDeg, speedMs):
@@ -26,7 +27,9 @@ def windResistance(vessel, windSpeedMs, windDirFrom, headingDeg, speedMs):
     ahead = speedMs + windSpeedMs * math.cos(rel)  
     beam = windSpeedMs * math.sin(rel)
     psiR = abs(math.degrees(math.atan2(beam, ahead)))  #relative wind direction
-    CX = float(np.interp(psiR, PSI, CX_PROFILE))
+    i = min(int(psiR // 10), 17)
+    frac = psiR / 10 - i
+    CX = _CX[i] + frac * (_CX[i + 1] - _CX[i])
     return 0.5 * RHO_AIR * vessel.frontalWindageArea * (CX * (ahead**2 + beam**2) - CX0_UNIFORM * speedMs**2)
 
 

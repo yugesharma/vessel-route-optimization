@@ -8,6 +8,7 @@
 # RA = model–ship correlation (roughness) allowance
 
 import math
+from functools import cache
 import numpy as np
 
 def getLWL(LPP):
@@ -200,6 +201,7 @@ def roughnessResistance(V,rho,L,S,CB,c2,c4):
 # RT = RF(1 + k₁) + RAPP + RW + RB + RTR + RA
 # where:
 # RF = frictional resistance (ITTC-1957 line) (1 + k₁) = form factor accounting for viscous pressure resistance RAPP = appendage resistance RW = wave-making resistance RB = additional pressure resistance due to bulbous bow near waterline RTR = additional pressure resistance due to submerged transom stern RA = model–ship correlation (roughness) allowance
+@cache  # ponytail: only ~5 distinct (V, waterTemp, vsl) inputs per run; assumes vessel isn't mutated after construction
 def calmWaterResistance(V,waterTemp,vsl):
     L=vsl.L
     B=vsl.B

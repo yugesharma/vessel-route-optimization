@@ -500,3 +500,7 @@
 .results-sidebar .results-actions .download-options button:hover {
   background-color: rgba(0, 150, 136, 0.3);
 }
+.search-done .leaflet-explored-pane {
+  opacity: 0;
+  transition: opacity 2s ease-out;
+}

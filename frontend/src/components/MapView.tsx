@@ -117,7 +117,7 @@ function MapView({showResults, startPoint, endPoint, setStartPoint, setEndPoint,
   }
   
   return( 
-  <div className="map-wrapper">
+  <div className={`map-wrapper${generating ? '' : ' search-done'}`}>
     <MapContainer
     center={[38,-74]}
     zoom={5}
@@ -136,7 +136,9 @@ function MapView({showResults, startPoint, endPoint, setStartPoint, setEndPoint,
   
 
   {exploredBatches && exploredBatches.length > 0 && (
-    exploredBatches.map((batch,i)=> <ExploredBatch key={i} nodes={batch} />)
+    <Pane name='explored' style={{zIndex:410}}>
+      {exploredBatches.map((batch,i)=> <ExploredBatch key={i} nodes={batch} />)}
+    </Pane>
   )}
 
 {currBestPath && currBestPath.length > 0 && (

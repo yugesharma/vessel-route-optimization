@@ -99,6 +99,7 @@ function App() {
       }
       else if (data.type === 'error') {
         alert(data.message)
+        setExploredBatches([])
         setGenerating(false)
       }
     }
@@ -137,9 +138,7 @@ function App() {
       ws.send(JSON.stringify({ startPoint, endPoint, dateTime, fuelTimeWeight, maxWaveHeight }))
     }
     ws.onmessage = (e)=>handleMessage(e)
-    // server closes after the result (or on a crash): clear the search markers either way
     ws.onclose = () => {
-      setExploredBatches([])
       setFrontierNodes([])
       setCurrBestPath([])
       setGenerating(false)
@@ -148,6 +147,7 @@ function App() {
 
   const onBack = () => {
     setShowResults(false)
+    setExploredBatches([])
     setBasicRoutePoints([])
     setOptimizedRoutePoints([])
     setOptimizedRouteDistance(null)

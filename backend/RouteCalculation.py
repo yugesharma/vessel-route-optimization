@@ -137,6 +137,10 @@ def aStar(start,goal,t0,vsl,speeds,navGrid,environmentDataService,costMin,timeBi
             continue
 
         if currentNode == goal:
+            if onProgress and exploredNodes:
+                onProgress({"exploredNodes": exploredNodes,
+                            "currBestPath": reconstructPath(parents, currKey, navGrid, t0),
+                            })
             return currKey,g,parents
         moves=neighbors(currentNode,depTime,navGrid,speeds)
         weatherDep=environmentDataService.weatherAt(currentNode,depTime)

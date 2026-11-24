@@ -22,7 +22,7 @@ type ResultsSidebarProps = {
   onBack: () => void
 }
 
-function ResultsSidebar({startPoint, endPoint, startLocation, endLocation, dateTime, optimizedRouteDistance, optimizedRouteTime, optimizedRouteFuel, optimizedRouteAvgSpeed, fuelTimeWeight, setFuelTimeWeight, maxWaveHeight, setMaxWaveHeight, basicRoute, optimizedRoute, generating, generateRoute, onBack}: ResultsSidebarProps) {
+function ResultsSidebar({startPoint, endPoint, dateTime, optimizedRouteDistance, optimizedRouteTime, optimizedRouteFuel, optimizedRouteAvgSpeed, fuelTimeWeight, setFuelTimeWeight, maxWaveHeight, setMaxWaveHeight, basicRoute, optimizedRoute, generating, generateRoute, onBack}: ResultsSidebarProps) {
     const departureDate = new Date(dateTime)
     const arrivalDate = optimizedRouteTime !== null ? new Date(departureDate.getTime() + optimizedRouteTime * 3.6e6) : null
     const [downloadMenuOpen,setDownloadMenuOpen]=useState(false)

@@ -88,7 +88,7 @@ function MapUpdater({
 function MapView({showResults, startPoint, endPoint, setStartPoint, setEndPoint, 
   setStartLocation, setEndLocation, basicRoutePoints, optimizedRoutePoints,
   optimizedRouteDistance, optimizedRouteTime, optimizedRouteFuel, optimizedRouteAvgSpeed,
-  routeDistance, duration, overlayReady, overlayDate, overlayHours, exploredBatches, frontierNodes, currBestPath, generating }: MapViewProps) {
+  routeDistance, overlayReady, overlayDate, overlayHours, exploredBatches, currBestPath, generating }: MapViewProps) {
   const [selectingStart, setSelectingStart] = useState(true)
   const [selectedRoute, setSelectedRoute] = useState<'basic' | 'optimized' | null>(null)
   const hoverRef = useRef<HTMLDivElement>(null)

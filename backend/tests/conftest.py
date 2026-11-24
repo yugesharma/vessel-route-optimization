@@ -10,11 +10,12 @@ backendDir=Path(__file__).parent.parent
 weatherDataDir=backendDir/'data'/'weatherData'
 calmWeatherPath=weatherDataDir/'testData'/'testCalmWeather.nc'
 stormWeatherPath=weatherDataDir/'testData'/'testStormWeather.nc'
+moderateWeatherPath = weatherDataDir / 'testData' / 'testModerateWeather.nc'
 
 def build_fake_weather_files():
     calm={"swh": 1.0, "perpw": 8.0, "dirpw": 0.0, "ws": 3.0, "wdir": 0.0}
 
-    if calmWeatherPath.is_file() and stormWeatherPath.is_file():
+    if calmWeatherPath.is_file() and stormWeatherPath.is_file() and moderateWeatherPath.is_file():
         print('file already exists')
         return
 
@@ -31,7 +32,13 @@ def build_fake_weather_files():
     calmWeatherPath.parent.mkdir(parents=True, exist_ok=True)
     croppedWeather.to_netcdf(calmWeatherPath)
 
-    croppedWeather['swh'].loc[dict(latitude=slice(36.6,36.3),longitude=slice(-6.96,-6.07))]=8.0
+    moderateWeather = croppedWeather.copy(deep=True)
+
+    moderateWeather["swh"] = xr.full_like(moderateWeather["swh"], 3.0)
+
+    moderateWeather.to_netcdf(moderateWeatherPath)
+
+    croppedWeather['swh'].loc[dict(latitude=slice(36.6,36.3),longitude=slice(-6.96,-6.07))]=7.0
     croppedWeather.to_netcdf(stormWeatherPath)
     print('Fake weather files for testing created')
 
@@ -41,6 +48,14 @@ def calm_route():
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(environmentDataService,"getWeatherForecast",lambda weather_dir:calmWeatherPath)
         return runRoute(routeRequest)
+
+@pytest.fixture(scope="module")
+def moderate_route():
+    routeRequest=RouteRequest(startPoint=(37.175, -6.981),endPoint=(35.855, -5.336),dateTime='2026-01-01T00:01',fuelTimeWeight=0.5,maxWaveHeight=6.0)
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(environmentDataService,"getWeatherForecast",lambda weather_dir:moderateWeatherPath)
+        return runRoute(routeRequest)
+
 
 @pytest.fixture(scope="module")
 def storm_route():
@@ -56,6 +71,28 @@ def land_avoidance_route():
     with pytest.MonkeyPatch.context() as mp:
         mp.setattr(environmentDataService,"getWeatherForecast",lambda weather_dir:calmWeatherPath)
         return runRoute(routeRequest)
+
+@pytest.fixture(scope="module")
+def fuel_priority_route():
+    routeRequest=RouteRequest(startPoint=(37.175, -6.981),endPoint=(35.855, -5.336),dateTime='2026-01-01T00:01',fuelTimeWeight=0.0,maxWaveHeight=6.0)
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(environmentDataService,"getWeatherForecast",lambda weather_dir:calmWeatherPath)
+        return runRoute(routeRequest)
+
+@pytest.fixture(scope="module")
+def time_priority_route():
+    routeRequest=RouteRequest(startPoint=(37.175, -6.981),endPoint=(35.855, -5.336),dateTime='2026-01-01T00:01',fuelTimeWeight=1.0,maxWaveHeight=6.0)
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(environmentDataService,"getWeatherForecast",lambda weather_dir:calmWeatherPath)
+        return runRoute(routeRequest)
+   
+@pytest.fixture(scope="module")
+def permissive_storm_route():
+    routeRequest=RouteRequest(startPoint=(37.175, -6.981),endPoint=(35.855, -5.336),dateTime='2026-01-01T00:01',fuelTimeWeight=0.5,maxWaveHeight=8.0)
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(environmentDataService,"getWeatherForecast",lambda weather_dir:stormWeatherPath)
+        return runRoute(routeRequest)
+
 
 @pytest.fixture
 def calm_weather_service(monkeypatch):
